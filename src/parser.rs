@@ -1,3 +1,4 @@
+use crate::lexer::LexicalError;
 use crate::token::Token;
 use crate::Lexer;
 
@@ -15,7 +16,10 @@ impl Environment {
     }
 }
 
-pub fn interpret_code(lexer: &mut Lexer, environment: &mut Environment) -> Option<()> {
+pub fn interpret_code(
+    lexer: &mut Lexer,
+    environment: &mut Environment,
+) -> Result<(), LexicalError> {
     loop {
         match lexer.next()? {
             Token::Seja => {
@@ -98,9 +102,13 @@ pub fn interpret_code(lexer: &mut Lexer, environment: &mut Environment) -> Optio
                     );
                 };
 
-                let enquanto_init = lexer.pos;
+                let enquanto_init = lexer.pos.clone();
 
-                let value = *environment.variables.get(&condition_var_name)?;
+                let value = *environment
+                    .variables
+                    .get(&condition_var_name)
+                    .ok_or_else(|| LexicalError::new("Erro: variavel não definida", "", lexer.pos.get_row(), lexer.pos.get_col()))?;
+
                 match operation.as_str() {
                     "<" => {
                         if value >= condition_value {
@@ -124,7 +132,10 @@ pub fn interpret_code(lexer: &mut Lexer, environment: &mut Environment) -> Optio
                 loop {
                     interpret_code(lexer, environment)?;
 
-                    let value = *environment.variables.get(&condition_var_name)?;
+                    let value = *environment
+                        .variables
+                        .get(&condition_var_name)
+                        .ok_or_else(|| LexicalError::new("Erro: variavel não definida", "", 0, 0))?;
 
                     match operation.as_str() {
                         "<" => {
@@ -145,7 +156,7 @@ pub fn interpret_code(lexer: &mut Lexer, environment: &mut Environment) -> Optio
                         _ => panic!("Operador inválido na condição do 'enquanto'"),
                     }
 
-                    lexer.pos = enquanto_init;
+                    lexer.pos = enquanto_init.clone();
                 }
             }
             Token::Fim => break,
@@ -153,5 +164,5 @@ pub fn interpret_code(lexer: &mut Lexer, environment: &mut Environment) -> Optio
         }
     }
 
-    Some(())
+    Ok(())
 }
