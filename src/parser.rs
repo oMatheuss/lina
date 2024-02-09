@@ -29,52 +29,90 @@ pub fn interpret_code(
                     panic!("Erro: Esperava-se um identificador após 'seja'");
                 };
 
-                let Token::Numero(var_value) = lexer.next()? else {
-                    panic!("Erro: Esperava-se um valor após o identificador da declaração 'seja'");
-                };
+                let new_value;
+                match lexer.next()? {
+                    Token::Numero(value) => new_value = value,
+                    Token::Identificador(name) => {
+                        let value = *environment
+                            .variables
+                            .get(&name)
+                            .unwrap_or_else(|| panic!("Variável não definida: {}", name));
 
-                environment.variables.insert(var_name, var_value);
+                        new_value = value;
+                    }
+                    _ => panic!("Erro: Esperava-se um valor após o identificador da declaração 'seja'"),
+                }
+
+                environment.variables.insert(var_name, new_value);
             }
             Token::Identificador(name) => match lexer.next()? {
-                Token::Incremento => {
-                    let value = environment
+                Token::Operador(op) => match op.as_str() {
+                    "++" => {
+                        let value = environment
                         .variables
                         .get_mut(&name)
                         .unwrap_or_else(|| panic!("Variável não definida: {}", name));
-                    *value += 1;
-                }
-                Token::Decremento => {
-                    let value = environment
+                        *value += 1;
+                    }
+                    "--" => {
+                        let value = environment
                         .variables
                         .get_mut(&name)
                         .unwrap_or_else(|| panic!("Variável não definida: {}", name));
-                    *value -= 1;
+                        *value -= 1;
+                    }
+                    "+=" => match lexer.next()? {
+                        Token::Identificador(var2) => {
+                            let target = if let Some(target) = environment.variables.get(&var2) {
+                                *target
+                            } else {
+                                panic!("Erro: Variavel inexperada '{name}'")
+                            };
+    
+                            let value = environment
+                                .variables
+                                .get_mut(&name)
+                                .unwrap_or_else(|| panic!("Variável não definida: {}", name));
+    
+                            *value += target;
+                        }
+                        Token::Numero(target) => {
+                            let value = environment
+                                .variables
+                                .get_mut(&name)
+                                .unwrap_or_else(|| panic!("Variável não definida: {}", name));
+    
+                            *value += target;
+                        }
+                        _ => panic!("Erro: Token inválido após operação de atribuição incremento"),
+                    }
+                    "=" => match lexer.next()? {
+                        Token::Identificador(var2) => {
+                            let target = if let Some(target) = environment.variables.get(&var2) {
+                                *target
+                            } else {
+                                panic!("Erro: Variavel inexperada '{name}'")
+                            };
+    
+                            let value = environment
+                                .variables
+                                .get_mut(&name)
+                                .unwrap_or_else(|| panic!("Variável não definida: {}", name));
+    
+                            *value = target;
+                        }
+                        Token::Numero(target) => {
+                            let value = environment
+                                .variables
+                                .get_mut(&name)
+                                .unwrap_or_else(|| panic!("Variável não definida: {}", name));
+    
+                            *value = target;
+                        }
+                        _ => panic!("Erro: Token inválido após operação de atribuição incremento"),
+                    }
+                    _ => todo!()
                 }
-                Token::AtribuicaoIncremento => match lexer.next()? {
-                    Token::Identificador(var2) => {
-                        let target = if let Some(target) = environment.variables.get(&var2) {
-                            *target
-                        } else {
-                            panic!("Erro: Variavel inexperada '{name}'")
-                        };
-
-                        let value = environment
-                            .variables
-                            .get_mut(&name)
-                            .unwrap_or_else(|| panic!("Variável não definida: {}", name));
-
-                        *value += target;
-                    }
-                    Token::Numero(target) => {
-                        let value = environment
-                            .variables
-                            .get_mut(&name)
-                            .unwrap_or_else(|| panic!("Variável não definida: {}", name));
-
-                        *value += target;
-                    }
-                    _ => panic!("Erro: Token inválido após operação de atribuição incremento"),
-                },
                 _ => todo!(),
             },
             Token::Imprima => match lexer.next()? {

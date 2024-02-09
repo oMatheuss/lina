@@ -12,10 +12,6 @@ pub enum Token {
     Identificador(String),
     Numero(i32),
     Operador(String),
-    Incremento,
-    AtribuicaoIncremento,
-    Decremento,
-    AtribuicaoDecremento,
     Fim,
 	FimDoArquivo
 }

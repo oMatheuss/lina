@@ -141,7 +141,7 @@ impl Lexer {
                 let num = self
                     .consume_number()
                     .parse()
-                    .map_err(|err| self.create_error(&format!("Erro: {}", err)))?;
+                    .map_err(|err| self.create_error(&format!("{}", err)))?;
 
                 Ok(Token::Numero(num))
             }
@@ -151,16 +151,16 @@ impl Lexer {
                         // match for ++ and --
                         self.pos.increment_char_by(2);
                         match c {
-                            '+' => Ok(Token::Incremento),
-                            '-' => Ok(Token::Decremento),
+                            '+' => Ok(Token::Operador(String::from("++"))),
+                            '-' => Ok(Token::Operador(String::from("--"))),
                             _ => unreachable!(),
                         }
                     } else if next_c == '=' {
                         // match for += and -=
                         self.pos.increment_char_by(2);
                         match c {
-                            '+' => Ok(Token::AtribuicaoIncremento),
-                            '-' => Ok(Token::AtribuicaoDecremento),
+                            '+' => Ok(Token::Operador(String::from("+="))),
+                            '-' => Ok(Token::Operador(String::from("-="))),
                             _ => todo!(),
                         }
                     } else {
