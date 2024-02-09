@@ -1,0 +1,12 @@
+seja foo 1
+
+enquanto foo < 5 faça
+	seja bar 0
+
+	enquanto bar < 5 faça
+		imprima bar
+		bar += foo
+	fim
+
+	foo++
+fim
