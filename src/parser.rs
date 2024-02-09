@@ -6,12 +6,14 @@ use std::collections::HashMap;
 
 pub struct Environment {
     variables: HashMap<String, i32>,
+	depth: usize,
 }
 
 impl Environment {
     pub fn new() -> Self {
         Self {
             variables: HashMap::new(),
+			depth: 0,
         }
     }
 }
@@ -84,6 +86,8 @@ pub fn interpret_code(
                 _ => panic!("Erro: Token inválido após imprima"),
             },
             Token::Enquanto => {
+				environment.depth += 1;
+
                 let Token::Identificador(condition_var_name) = lexer.next()? else {
                     panic!("Erro: Esperava-se um identificador após 'enquanto'");
                 };
@@ -158,8 +162,17 @@ pub fn interpret_code(
 
                     lexer.pos = enquanto_init.clone();
                 }
+
+				environment.depth -= 1;
             }
             Token::Fim => break,
+			Token::FimDoArquivo => {
+				if environment.depth == 0 {
+					break;
+				} else {
+					panic!("Fim do arquivo inexperado")
+				}
+			}
             _ => todo!(),
         }
     }

@@ -132,7 +132,7 @@ impl Lexer {
         self.consume_whitespace();
 
         let Some(&c) = self.code.get(self.pos.curr_char) else {
-            return Ok(Token::Fim);
+            return Ok(Token::FimDoArquivo);
         };
 
         match c {

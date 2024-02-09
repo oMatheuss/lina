@@ -17,4 +17,5 @@ pub enum Token {
     Decremento,
     AtribuicaoDecremento,
     Fim,
+	FimDoArquivo
 }
