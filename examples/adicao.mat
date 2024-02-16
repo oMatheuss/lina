@@ -1,9 +1,6 @@
 seja a 1.5
 seja b 2.5
 
-a++
-a++
+a += 3
 
-b = a
-
-imprima b
+imprima a

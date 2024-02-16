@@ -63,21 +63,49 @@ pub fn interpret_code(lexer: &mut Lexer, environment: &mut Environment) -> Resul
                             )))?,
                         };
 
-                        let lhs = environment.get_val_mut(name).unwrap();
-
-                        if lhs.variant_eq(&rhs) {
-                            *lhs = rhs;
-                        } else {
-                            Err(lexer
-                                .create_error(&format!("não é possivel atribuir {rhs} à {lhs}")))?
-                        }
+                        let lhs = environment
+                            .get_val_mut(name)
+                            .ok_or_else(|| lexer.create_error("variavel não definida"))?;
+                        *lhs = rhs;
                     }
                     Operador::Adicao => todo!(),
                     Operador::Subtracao => todo!(),
                     Operador::Multiplicacao => todo!(),
                     Operador::Divisao => todo!(),
                     Operador::Resto => todo!(),
-                    Operador::SomaAtribuicao => todo!(),
+                    Operador::SomaAtribuicao => {
+                        let next_token = lexer.next()?;
+
+                        let rhs = match next_token {
+                            Token::Valor(value) => value,
+                            Token::Identificador(name) => environment
+                                .get_val(name)
+                                .ok_or_else(|| lexer.create_error("variavel não definida"))?
+                                .clone(),
+                            _ => Err(lexer.create_error(&format!(
+                                "esperava-se um valor, encontrou {next_token}"
+                            )))?,
+                        };
+
+                        match rhs {
+                            Valor::Numero(val2) => {
+                                let lhs = environment
+                                    .get_val_mut(name)
+                                    .ok_or_else(|| lexer.create_error("variavel não definida"))?;
+                                if let Valor::Numero(val1) = lhs {
+                                    *val1 += val2;
+                                } else {
+                                    Err(lexer.create_error(&format!(
+                                        "numero não pode ser adicionado a {lhs}"
+                                    )))?;
+                                }
+                            }
+                            Valor::Texto(val) => todo!(),
+                            Valor::Booleano(val) => todo!(),
+                            Valor::Vetor(val) => todo!(),
+                            Valor::Nulo => todo!(),
+                        }
+                    }
                     Operador::SubtracaoAtribuicao => todo!(),
                     Operador::MultiplicacaoAtribuicao => todo!(),
                     Operador::DivisaoAtribuicao => todo!(),
