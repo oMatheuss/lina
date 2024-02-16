@@ -1,0 +1,9 @@
+seja a 1.5
+seja b 2.5
+
+a++
+a++
+
+b = a
+
+imprima b

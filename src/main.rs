@@ -2,6 +2,7 @@ use std::env;
 use std::fs::File;
 use std::io::Read;
 
+mod error;
 mod lexer;
 mod parser;
 mod token;
@@ -27,6 +28,6 @@ fn main() {
 
     match interpret_code(&mut lexer, &mut environment) {
         Ok(..) => {}
-        Err(err) => eprint!("{}", err)
+        Err(err) => eprint!("{}", err),
     }
 }

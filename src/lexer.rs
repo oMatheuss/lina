@@ -1,31 +1,5 @@
-use std::fmt::Display;
-
-use crate::token::Token;
-
-pub struct LexicalError {
-    message: String,
-    row: usize,
-    col: usize,
-	file_name: String,
-}
-
-impl LexicalError {
-    pub fn new(message: &str, file: &str, row: usize, col: usize) -> Self {
-        Self {
-            message: String::from(message),
-            row,
-            col,
-			file_name: String::from(file)
-        }
-    }
-}
-
-impl Display for LexicalError {
-    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        writeln!(f, "Erro Léxico: {}", self.message)?;
-        writeln!(f, "--> {} {}:{}", self.file_name, self.row, self.col)
-    }
-}
+use crate::error::Error;
+use crate::token::{Operador, Token, Valor};
 
 #[derive(PartialEq, PartialOrd, Clone)]
 pub struct Position {
@@ -80,10 +54,10 @@ impl Lexer {
         }
     }
 
-    fn create_error(&self, message: &str) -> LexicalError {
-        LexicalError::new(
+    pub fn create_error(&self, message: &str) -> Error {
+        Error::new(
             message,
-			&self.pos.file_name,
+            &self.pos.file_name,
             self.pos.line_num,
             self.pos.curr_char - self.pos.line_start,
         )
@@ -117,18 +91,43 @@ impl Lexer {
 
     fn consume_number(&mut self) -> String {
         let mut num_str = String::new();
+        let mut state: i8 = 1;
+
         while let Some(&c) = self.code.get(self.pos.curr_char) {
-            if c.is_numeric() {
-                num_str.push(c);
-                self.pos.increment_char();
-            } else {
-                break;
+            match state {
+                1 => {
+                    if c.is_ascii_digit() {
+                        num_str.push(c);
+                        self.pos.increment_char();
+                    } else {
+                        state += 1;
+                    }
+                }
+                2 => {
+                    if c == '.' {
+                        num_str.push(c);
+                        self.pos.increment_char();
+                        state = 3;
+                    } else {
+                        break;
+                    }
+                }
+                3 => {
+                    if c.is_ascii_digit() {
+                        num_str.push(c);
+                        self.pos.increment_char();
+                    } else {
+                        break;
+                    }
+                }
+                _ => break,
             }
         }
+
         num_str
     }
 
-    pub fn next(&mut self) -> Result<Token, LexicalError> {
+    pub fn next(&mut self) -> Result<Token, Error> {
         self.consume_whitespace();
 
         let Some(&c) = self.code.get(self.pos.curr_char) else {
@@ -143,35 +142,92 @@ impl Lexer {
                     .parse()
                     .map_err(|err| self.create_error(&format!("{}", err)))?;
 
-                Ok(Token::Numero(num))
+                Ok(Token::Valor(Valor::Numero(num)))
             }
             '<' | '>' | '=' | '+' | '-' | '*' | '/' | '%' => {
-                if let Some(&next_c) = self.code.get(self.pos.curr_char + 1) {
-                    if (c == '+' || c == '-') && next_c == c {
-                        // match for ++ and --
-                        self.pos.increment_char_by(2);
-                        match c {
-                            '+' => Ok(Token::Operador(String::from("++"))),
-                            '-' => Ok(Token::Operador(String::from("--"))),
-                            _ => unreachable!(),
+                self.pos.increment_char();
+                if let Some(&next_c) = self.code.get(self.pos.curr_char) {
+                    let operador = match c {
+                        '<' => {
+                            if next_c == '=' {
+                                self.pos.increment_char();
+                                Operador::MenorIgualQue
+                            } else {
+                                Operador::MenorQue
+                            }
                         }
-                    } else if next_c == '=' {
-                        // match for += and -=
-                        self.pos.increment_char_by(2);
-                        match c {
-                            '+' => Ok(Token::Operador(String::from("+="))),
-                            '-' => Ok(Token::Operador(String::from("-="))),
-                            _ => todo!(),
+                        '>' => {
+                            if next_c == '=' {
+                                self.pos.increment_char();
+                                Operador::MaiorIgualQue
+                            } else {
+                                Operador::MaiorQue
+                            }
                         }
-                    } else {
-                        // match for any given operator +, -, *, ...
-                        self.pos.increment_char();
-                        Ok(Token::Operador(c.to_string()))
-                    }
+                        '=' => {
+                            if next_c == '=' {
+                                self.pos.increment_char();
+                                Operador::Igual
+                            } else {
+                                Operador::Atribuicao
+                            }
+                        }
+                        '+' => {
+                            if next_c == '+' {
+                                self.pos.increment_char();
+                                Operador::AutoAdicao
+                            } else if next_c == '=' {
+                                self.pos.increment_char();
+                                Operador::SomaAtribuicao
+                            } else {
+                                Operador::Adicao
+                            }
+                        }
+                        '-' => {
+                            if next_c == '-' {
+                                self.pos.increment_char();
+                                Operador::AutoSubtracao
+                            } else if next_c == '=' {
+                                self.pos.increment_char();
+                                Operador::SubtracaoAtribuicao
+                            } else {
+                                Operador::Subtracao
+                            }
+                        }
+                        '*' => {
+                            if next_c == '=' {
+                                self.pos.increment_char();
+                                Operador::MultiplicacaoAtribuicao
+                            } else {
+                                Operador::Multiplicacao
+                            }
+                        }
+                        '/' => {
+                            if next_c == '=' {
+                                self.pos.increment_char();
+                                Operador::DivisaoAtribuicao
+                            } else {
+                                Operador::Divisao
+                            }
+                        }
+                        '%' => Operador::Resto,
+                        _ => unreachable!(),
+                    };
+
+                    Ok(Token::Operador(operador))
                 } else {
-                    // match for any given operator +, -, *, ...
-                    self.pos.increment_char();
-                    Ok(Token::Operador(c.to_string()))
+                    let operador = match c {
+                        '<' => Operador::MenorQue,
+                        '>' => Operador::MaiorQue,
+                        '=' => Operador::Atribuicao,
+                        '+' => Operador::Adicao,
+                        '-' => Operador::Subtracao,
+                        '*' => Operador::Multiplicacao,
+                        '/' => Operador::Divisao,
+                        '%' => Operador::Resto,
+                        _ => unreachable!(),
+                    };
+                    Ok(Token::Operador(operador))
                 }
             }
             'a'..='z' | 'A'..='Z' => {
@@ -191,6 +247,24 @@ impl Lexer {
                 }
             }
             _ => Err(self.create_error("Token inesperado")),
+        }
+    }
+
+    pub fn next_as_valor(&mut self) -> Result<Valor, Error> {
+        let next_token = self.next()?;
+        if let Token::Valor(valor) = next_token {
+            Ok(valor)
+        } else {
+            Err(self.create_error(&format!("esperado valor, encontrou: {next_token}")))
+        }
+    }
+
+    pub fn next_as_operador(&mut self) -> Result<Operador, Error> {
+        let next_token = self.next()?;
+        if let Token::Operador(operador) = next_token {
+            Ok(operador)
+        } else {
+            Err(self.create_error(&format!("esperado operador, encontrou: {next_token}")))
         }
     }
 }
