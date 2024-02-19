@@ -6,9 +6,11 @@ mod error;
 mod lexer;
 mod parser;
 mod token;
+mod operator;
+mod value;
 
 use lexer::Lexer;
-use parser::{interpret_code, Environment};
+use parser::Environment;
 
 fn main() {
     let mut code = String::new();
@@ -26,8 +28,8 @@ fn main() {
     let mut lexer = Lexer::new(file_name.to_string(), &code);
     let mut environment = Environment::new();
 
-    match interpret_code(&mut lexer, &mut environment) {
+    match environment.interpret_code(&mut lexer) {
         Ok(..) => {}
-        Err(err) => eprint!("{}", err),
+        Err(err) => eprint!("{err}"),
     }
 }

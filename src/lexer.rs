@@ -1,12 +1,14 @@
 use crate::error::Error;
-use crate::token::{Operador, Token, Valor};
+use crate::operator::Operador;
+use crate::token::Token;
+use crate::value::Valor;
 
 #[derive(PartialEq, PartialOrd, Clone)]
 pub struct Position {
-    file_name: String,
-    line_num: usize,
-    curr_char: usize,
-    line_start: usize,
+    pub file_name: String,
+    pub line_num: usize,
+    pub curr_char: usize,
+    pub line_start: usize,
 }
 
 impl Position {
@@ -31,14 +33,6 @@ impl Position {
         self.line_num += 1;
         self.line_start = self.curr_char;
     }
-
-    pub fn get_col(&self) -> usize {
-        self.curr_char - self.line_start
-    }
-
-    pub fn get_row(&self) -> usize {
-        self.line_num
-    }
 }
 
 pub struct Lexer {
@@ -52,15 +46,6 @@ impl Lexer {
             code: code.chars().collect(),
             pos: Position::new(file_name),
         }
-    }
-
-    pub fn create_error(&self, message: &str) -> Error {
-        Error::new(
-            message,
-            &self.pos.file_name,
-            self.pos.line_num,
-            self.pos.curr_char - self.pos.line_start,
-        )
     }
 
     fn consume_whitespace(&mut self) {
@@ -139,8 +124,8 @@ impl Lexer {
                 // match for number literal
                 let num = self
                     .consume_number()
-                    .parse()
-                    .map_err(|err| self.create_error(&format!("{}", err)))?;
+                    .parse::<f32>()
+                    .map_err(|err| Error::new(&err.to_string(), &self.pos))?;
 
                 Ok(Token::Valor(Valor::Numero(num)))
             }
@@ -246,7 +231,8 @@ impl Lexer {
                     _ => Ok(Token::Identificador(identifier)),
                 }
             }
-            _ => Err(self.create_error("Token inesperado")),
+
+            _ => Err(Error::new("Token inesperado", &self.pos)),
         }
     }
 
@@ -255,7 +241,10 @@ impl Lexer {
         if let Token::Valor(valor) = next_token {
             Ok(valor)
         } else {
-            Err(self.create_error(&format!("esperado valor, encontrou: {next_token}")))
+            Err(Error::new(
+                &format!("esperado valor, encontrou: {next_token}"),
+                &self.pos,
+            ))
         }
     }
 
@@ -264,7 +253,10 @@ impl Lexer {
         if let Token::Operador(operador) = next_token {
             Ok(operador)
         } else {
-            Err(self.create_error(&format!("esperado operador, encontrou: {next_token}")))
+            Err(Error::new(
+                &format!("esperado operador, encontrou: {next_token}"),
+                &self.pos,
+            ))
         }
     }
 }

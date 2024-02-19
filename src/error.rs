@@ -1,5 +1,7 @@
 use std::fmt::Display;
 
+use crate::lexer::Position;
+
 pub struct Error {
     message: String,
     row: usize,
@@ -8,12 +10,12 @@ pub struct Error {
 }
 
 impl Error {
-    pub fn new(message: &str, file: &str, row: usize, col: usize) -> Self {
-        Self {
+    pub fn new(message: &str, pos: &Position) -> Self {
+        Error {
             message: String::from(message),
-            row,
-            col,
-            file_name: String::from(file),
+            row: pos.line_num,
+            col: pos.curr_char - pos.line_start,
+            file_name: pos.file_name.clone(),
         }
     }
 }
