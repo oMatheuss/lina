@@ -10,7 +10,7 @@ mod operator;
 mod value;
 
 use lexer::Lexer;
-use parser::Environment;
+use parser::{interpret_code, Environment};
 
 fn main() {
     let mut code = String::new();
@@ -26,9 +26,9 @@ fn main() {
         .expect("Erro ao ler o arquivo");
 
     let mut lexer = Lexer::new(file_name.to_string(), &code);
-    let mut environment = Environment::new();
+    let mut env = Environment::new();
 
-    match environment.interpret_code(&mut lexer) {
+    match interpret_code(&mut lexer, &mut env) {
         Ok(..) => {}
         Err(err) => eprint!("{err}"),
     }

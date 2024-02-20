@@ -1,4 +1,4 @@
-use crate::error::Error;
+use crate::error::{Result, Error};
 use crate::operator::Operador;
 use crate::token::Token;
 use crate::value::Valor;
@@ -21,15 +21,11 @@ impl Position {
         }
     }
 
-    fn increment_char(&mut self) {
+    fn incr(&mut self) {
         self.curr_char += 1;
     }
 
-    fn increment_char_by(&mut self, v: usize) {
-        self.curr_char += v;
-    }
-
-    fn increment_line(&mut self) {
+    fn incr_line(&mut self) {
         self.line_num += 1;
         self.line_start = self.curr_char;
     }
@@ -51,10 +47,10 @@ impl Lexer {
     fn consume_whitespace(&mut self) {
         while let Some(&c) = self.code.get(self.pos.curr_char) {
             if c == '\n' {
-                self.pos.increment_char();
-                self.pos.increment_line();
+                self.pos.incr();
+                self.pos.incr_line();
             } else if c.is_whitespace() {
-                self.pos.increment_char();
+                self.pos.incr();
             } else {
                 break;
             }
@@ -66,7 +62,7 @@ impl Lexer {
         while let Some(&c) = self.code.get(self.pos.curr_char) {
             if c.is_alphanumeric() {
                 identifier.push(c);
-                self.pos.increment_char();
+                self.pos.incr();
             } else {
                 break;
             }
@@ -83,7 +79,7 @@ impl Lexer {
                 1 => {
                     if c.is_ascii_digit() {
                         num_str.push(c);
-                        self.pos.increment_char();
+                        self.pos.incr();
                     } else {
                         state += 1;
                     }
@@ -91,7 +87,7 @@ impl Lexer {
                 2 => {
                     if c == '.' {
                         num_str.push(c);
-                        self.pos.increment_char();
+                        self.pos.incr();
                         state = 3;
                     } else {
                         break;
@@ -100,7 +96,7 @@ impl Lexer {
                 3 => {
                     if c.is_ascii_digit() {
                         num_str.push(c);
-                        self.pos.increment_char();
+                        self.pos.incr();
                     } else {
                         break;
                     }
@@ -112,7 +108,7 @@ impl Lexer {
         num_str
     }
 
-    pub fn next(&mut self) -> Result<Token, Error> {
+    pub fn next(&mut self) -> Result<Token> {
         self.consume_whitespace();
 
         let Some(&c) = self.code.get(self.pos.curr_char) else {
@@ -130,12 +126,12 @@ impl Lexer {
                 Ok(Token::Valor(Valor::Numero(num)))
             }
             '<' | '>' | '=' | '+' | '-' | '*' | '/' | '%' => {
-                self.pos.increment_char();
+                self.pos.incr();
                 if let Some(&next_c) = self.code.get(self.pos.curr_char) {
                     let operador = match c {
                         '<' => {
                             if next_c == '=' {
-                                self.pos.increment_char();
+                                self.pos.incr();
                                 Operador::MenorIgualQue
                             } else {
                                 Operador::MenorQue
@@ -143,7 +139,7 @@ impl Lexer {
                         }
                         '>' => {
                             if next_c == '=' {
-                                self.pos.increment_char();
+                                self.pos.incr();
                                 Operador::MaiorIgualQue
                             } else {
                                 Operador::MaiorQue
@@ -151,7 +147,7 @@ impl Lexer {
                         }
                         '=' => {
                             if next_c == '=' {
-                                self.pos.increment_char();
+                                self.pos.incr();
                                 Operador::Igual
                             } else {
                                 Operador::Atribuicao
@@ -159,10 +155,10 @@ impl Lexer {
                         }
                         '+' => {
                             if next_c == '+' {
-                                self.pos.increment_char();
+                                self.pos.incr();
                                 Operador::AutoAdicao
                             } else if next_c == '=' {
-                                self.pos.increment_char();
+                                self.pos.incr();
                                 Operador::SomaAtribuicao
                             } else {
                                 Operador::Adicao
@@ -170,10 +166,10 @@ impl Lexer {
                         }
                         '-' => {
                             if next_c == '-' {
-                                self.pos.increment_char();
+                                self.pos.incr();
                                 Operador::AutoSubtracao
                             } else if next_c == '=' {
-                                self.pos.increment_char();
+                                self.pos.incr();
                                 Operador::SubtracaoAtribuicao
                             } else {
                                 Operador::Subtracao
@@ -181,7 +177,7 @@ impl Lexer {
                         }
                         '*' => {
                             if next_c == '=' {
-                                self.pos.increment_char();
+                                self.pos.incr();
                                 Operador::MultiplicacaoAtribuicao
                             } else {
                                 Operador::Multiplicacao
@@ -189,7 +185,7 @@ impl Lexer {
                         }
                         '/' => {
                             if next_c == '=' {
-                                self.pos.increment_char();
+                                self.pos.incr();
                                 Operador::DivisaoAtribuicao
                             } else {
                                 Operador::Divisao
@@ -233,30 +229,6 @@ impl Lexer {
             }
 
             _ => Err(Error::new("Token inesperado", &self.pos)),
-        }
-    }
-
-    pub fn next_as_valor(&mut self) -> Result<Valor, Error> {
-        let next_token = self.next()?;
-        if let Token::Valor(valor) = next_token {
-            Ok(valor)
-        } else {
-            Err(Error::new(
-                &format!("esperado valor, encontrou: {next_token}"),
-                &self.pos,
-            ))
-        }
-    }
-
-    pub fn next_as_operador(&mut self) -> Result<Operador, Error> {
-        let next_token = self.next()?;
-        if let Token::Operador(operador) = next_token {
-            Ok(operador)
-        } else {
-            Err(Error::new(
-                &format!("esperado operador, encontrou: {next_token}"),
-                &self.pos,
-            ))
         }
     }
 }

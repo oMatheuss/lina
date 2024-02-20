@@ -26,3 +26,5 @@ impl Display for Error {
         writeln!(f, "--> {} {}:{}", self.file_name, self.row, self.col)
     }
 }
+
+pub type Result<T> = std::result::Result<T, Error>;
