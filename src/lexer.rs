@@ -1,4 +1,4 @@
-use crate::error::{Result, Error};
+use crate::error::{Error, Result};
 use crate::operator::Operador;
 use crate::token::Token;
 use crate::value::Valor;

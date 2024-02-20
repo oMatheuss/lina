@@ -4,9 +4,9 @@ use std::io::Read;
 
 mod error;
 mod lexer;
+mod operator;
 mod parser;
 mod token;
-mod operator;
 mod value;
 
 use lexer::Lexer;
