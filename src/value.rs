@@ -18,16 +18,10 @@ impl Valor {
 impl Display for Valor {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         match self {
-            Valor::Numero(v) => write!(f, "{v}"),
-            Valor::Texto(v) => write!(f, "{v}"),
-            Valor::Booleano(v) => write!(f, "{v}"),
-            Valor::Vetor(items) => {
-                write!(f, "[")?;
-                for item in items {
-                    write!(f, "{item}, ")?;
-                }
-                write!(f, "]")
-            }
+            Valor::Numero(..) => write!(f, "numero"),
+            Valor::Texto(..) => write!(f, "texto"),
+            Valor::Booleano(..) => write!(f, "booleano"),
+            Valor::Vetor(..) => write!(f, "vetor"),
             Valor::Nulo => write!(f, "nulo"),
         }
     }

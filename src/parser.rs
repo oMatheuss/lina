@@ -1,4 +1,5 @@
 use crate::error::{Error, Result};
+use crate::lexer::Position;
 use crate::operator::Operador;
 use crate::token::Token;
 use crate::value::Valor;
@@ -18,11 +19,29 @@ impl Environment {
             depth: 0,
         }
     }
+
+    fn get(&self, k: &String, pos: Position) -> Result<&Valor> {
+        let val = self.variables.get(k);
+        if let Some(val) = val {
+            Ok(val)
+        } else {
+            Err(Error::new(&format!("variavel não definida {k}"), &pos))
+        }
+    }
+
+    fn get_mut(&mut self, k: &String, pos: Position) -> Result<&mut Valor> {
+        let val = self.variables.get_mut(k);
+        if let Some(val) = val {
+            Ok(val)
+        } else {
+            Err(Error::new(&format!("variavel não definida {k}"), &pos))
+        }
+    }
 }
 
 pub fn interpret_code(lexer: &mut Lexer, env: &mut Environment) -> Result<()> {
     loop {
-        let pos = lexer.pos.clone();
+        let pos_init = lexer.pos.clone();
         let token = lexer.next()?;
         match token {
             Token::Seja => {
@@ -33,30 +52,21 @@ pub fn interpret_code(lexer: &mut Lexer, env: &mut Environment) -> Result<()> {
             }
             Token::Identificador(name) => {
                 let op = get_operador(lexer)?;
+
                 match op {
                     Operador::Atribuicao => {
                         let rhs = get_valor(lexer, env)?;
-
-                        let lhs = env
-                            .variables
-                            .get_mut(&name)
-                            .ok_or_else(|| Error::new("variavel não definida", &lexer.pos))?;
+                        let lhs = env.get_mut(&name, pos_init)?;
 
                         *lhs = rhs;
                     }
-                    Operador::Adicao => todo!(),
-                    Operador::Subtracao => todo!(),
-                    Operador::Multiplicacao => todo!(),
-                    Operador::Divisao => todo!(),
-                    Operador::Resto => todo!(),
                     Operador::SomaAtribuicao => {
                         let rhs = get_valor(lexer, env)?;
 
                         match rhs {
                             Valor::Numero(val2) => {
-                                let lhs = env.variables.get_mut(&name).ok_or_else(|| {
-                                    Error::new("variavel não definida", &lexer.pos)
-                                })?;
+                                let lhs = env.get_mut(&name, pos_init)?;
+
                                 if let Valor::Numero(val1) = lhs {
                                     *val1 += val2;
                                 } else {
@@ -77,7 +87,7 @@ pub fn interpret_code(lexer: &mut Lexer, env: &mut Environment) -> Result<()> {
                     Operador::DivisaoAtribuicao => todo!(),
                     Operador::RestoAtribuicao => todo!(),
                     Operador::AutoAdicao => {
-                        let lhs = env.variables.get_mut(&name).unwrap();
+                        let lhs = env.get_mut(&name, pos_init)?;
                         if let Valor::Numero(val) = lhs {
                             *val += 1.0;
                         } else {
@@ -88,7 +98,7 @@ pub fn interpret_code(lexer: &mut Lexer, env: &mut Environment) -> Result<()> {
                         }
                     }
                     Operador::AutoSubtracao => {
-                        let lhs = env.variables.get_mut(&name).unwrap();
+                        let lhs = env.get_mut(&name, pos_init)?;
                         if let Valor::Numero(val) = lhs {
                             *val -= 1.0;
                         } else {
@@ -98,17 +108,23 @@ pub fn interpret_code(lexer: &mut Lexer, env: &mut Environment) -> Result<()> {
                             ))?;
                         }
                     }
-                    _ => panic!("operador inválido '{op}'"),
+                    _ => Err(Error::new(&format!("operador inválido {op}"), &lexer.pos))?,
                 }
             }
             Token::Imprima => {
                 let value = get_valor(lexer, env)?;
-                print!("{value}");
+				match value {
+					Valor::Numero(value) => print!("{value}"),
+					Valor::Texto(value) => print!("{value}"),
+					Valor::Booleano(value) => print!("{value}"),
+					Valor::Nulo => print!("nulo"),
+					_ => todo!()
+				}
             }
             Token::Enquanto => {}
             Token::Fim => break,
             Token::FimDoArquivo => break,
-            _ => Err(Error::new(&format!("token inesperado {token}"), &pos))?,
+            _ => Err(Error::new(&format!("token inesperado {token}"), &pos_init))?,
         }
     }
 
@@ -135,12 +151,7 @@ fn get_valor(lexer: &mut Lexer, env: &mut Environment) -> Result<Valor> {
     match token {
         Token::Valor(value) => Ok(value),
         Token::Identificador(name) => {
-            let value = env
-                .variables
-                .get(&name)
-                .ok_or_else(|| Error::new("variavel não definida", &pos))?
-                .clone();
-
+            let value = env.get_mut(&name, pos)?.clone();
             Ok(value)
         }
         _ => Err(Error::new(

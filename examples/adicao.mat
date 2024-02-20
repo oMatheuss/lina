@@ -1,7 +1,10 @@
 seja a 3.14
 seja b 3.14
 
-a += b
+b += a
+
+seja c "teste"
 
 imprima 3.14
 imprima a
+imprima c

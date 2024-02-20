@@ -28,6 +28,7 @@ impl Position {
     fn incr_line(&mut self) {
         self.line_num += 1;
         self.line_start = self.curr_char;
+		self.curr_char += 1;
     }
 }
 
@@ -47,7 +48,6 @@ impl Lexer {
     fn consume_whitespace(&mut self) {
         while let Some(&c) = self.code.get(self.pos.curr_char) {
             if c == '\n' {
-                self.pos.incr();
                 self.pos.incr_line();
             } else if c.is_whitespace() {
                 self.pos.incr();
@@ -107,6 +107,26 @@ impl Lexer {
 
         num_str
     }
+
+	fn consume_string(&mut self) -> String {
+		let mut val_str = String::new();
+		let mut state: i8 = 1;
+
+		while let Some(&c) = self.code.get(self.pos.curr_char) {
+			self.pos.incr();
+			if let 1 = state {
+				state += 1;
+			} else {
+				if c != '"' {
+					val_str.push(c);
+				} else {
+					break;
+				}
+			}
+		}
+
+		val_str
+	}
 
     pub fn next(&mut self) -> Result<Token> {
         self.consume_whitespace();
@@ -211,21 +231,27 @@ impl Lexer {
                     Ok(Token::Operador(operador))
                 }
             }
+			'"' => {
+				let val = self.consume_string();
+				Ok(Token::Valor(Valor::Texto(val)))
+			}
             'a'..='z' | 'A'..='Z' => {
                 let identifier = self.consume_identifier();
-                match identifier.as_str() {
-                    "seja" => Ok(Token::Seja),
-                    "faça" => Ok(Token::Faca),
-                    "então" => Ok(Token::Entao),
-                    "imprima" => Ok(Token::Imprima),
-                    "enquanto" => Ok(Token::Enquanto),
-                    "se" => Ok(Token::Se),
-                    "função" => Ok(Token::Funcao),
-                    "para" => Ok(Token::Para),
-                    "retorne" => Ok(Token::Retorne),
-                    "fim" => Ok(Token::Fim),
-                    _ => Ok(Token::Identificador(identifier)),
-                }
+                let token = match identifier.as_str() {
+                    "seja" => Token::Seja,
+                    "faça" => Token::Faca,
+                    "então" => Token::Entao,
+                    "imprima" => Token::Imprima,
+                    "enquanto" => Token::Enquanto,
+                    "se" => Token::Se,
+                    "função" => Token::Funcao,
+                    "para" => Token::Para,
+                    "retorne" => Token::Retorne,
+                    "fim" => Token::Fim,
+                    _ => Token::Identificador(identifier),
+                };
+
+				Ok(token)
             }
 
             _ => Err(Error::new("Token inesperado", &self.pos)),
