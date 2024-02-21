@@ -28,7 +28,7 @@ impl Position {
     fn incr_line(&mut self) {
         self.line_num += 1;
         self.line_start = self.curr_char;
-		self.curr_char += 1;
+        self.curr_char += 1;
     }
 }
 
@@ -108,25 +108,32 @@ impl Lexer {
         num_str
     }
 
-	fn consume_string(&mut self) -> String {
-		let mut val_str = String::new();
-		let mut state: i8 = 1;
+    fn consume_string(&mut self) -> String {
+        let mut val_str = String::new();
+        let mut state: i8 = 1;
 
-		while let Some(&c) = self.code.get(self.pos.curr_char) {
-			self.pos.incr();
-			if let 1 = state {
-				state += 1;
-			} else {
-				if c != '"' {
-					val_str.push(c);
-				} else {
-					break;
-				}
-			}
-		}
+        while let Some(&c) = self.code.get(self.pos.curr_char) {
+            self.pos.incr();
+            if let 1 = state {
+                state += 1;
+            } else {
+                if c != '"' {
+                    val_str.push(c);
+                } else {
+                    break;
+                }
+            }
+        }
 
-		val_str
-	}
+        val_str
+    }
+
+    pub fn peek(&mut self) -> Result<Token> {
+        let pos = self.pos.clone();
+        let next = self.next();
+        self.pos = pos;
+        next
+    }
 
     pub fn next(&mut self) -> Result<Token> {
         self.consume_whitespace();
@@ -231,16 +238,16 @@ impl Lexer {
                     Ok(Token::Operador(operador))
                 }
             }
-			'"' => {
-				let val = self.consume_string();
-				Ok(Token::Valor(Valor::Texto(val)))
-			}
+            '"' => {
+                let val = self.consume_string();
+                Ok(Token::Valor(Valor::Texto(val)))
+            }
             'a'..='z' | 'A'..='Z' => {
                 let identifier = self.consume_identifier();
                 let token = match identifier.as_str() {
                     "seja" => Token::Seja,
-                    "faça" => Token::Faca,
-                    "então" => Token::Entao,
+                    "faca" => Token::Faca,
+                    "entao" => Token::Entao,
                     "imprima" => Token::Imprima,
                     "enquanto" => Token::Enquanto,
                     "se" => Token::Se,
@@ -248,10 +255,11 @@ impl Lexer {
                     "para" => Token::Para,
                     "retorne" => Token::Retorne,
                     "fim" => Token::Fim,
+                    "nulo" => Token::Valor(Valor::Nulo),
                     _ => Token::Identificador(identifier),
                 };
 
-				Ok(token)
+                Ok(token)
             }
 
             _ => Err(Error::new("Token inesperado", &self.pos)),
