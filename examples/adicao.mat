@@ -1,10 +1,6 @@
-seja a 3.14
-seja b 3.14
-
-b += a
-
-seja c "teste"
+seja c "hello"
+c += ", world"
 
 imprima 3.14
-imprima a
 imprima c
+imprima "isso também funciona aqui"

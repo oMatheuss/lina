@@ -219,13 +219,13 @@ impl Lexer {
                             }
                         }
                         '%' => {
-							if next_c == '=' {
-								self.pos.incr();
-								Operador::RestoAtribuicao
-							} else {
-								Operador::Resto
-							}
-						},
+                            if next_c == '=' {
+                                self.pos.incr();
+                                Operador::RestoAtribuicao
+                            } else {
+                                Operador::Resto
+                            }
+                        }
                         _ => unreachable!(),
                     };
 
