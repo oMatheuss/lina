@@ -6,4 +6,4 @@ d += 2 + 0.14
 
 imprima "resultado: " + d
 imprima c
-imprima "isso também funciona aqui"
+imprima 999.99 + 0.01
