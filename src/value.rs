@@ -9,12 +9,6 @@ pub enum Valor {
     Nulo,
 }
 
-impl Valor {
-    pub fn variant_eq(&self, b: &Valor) -> bool {
-        std::mem::discriminant(self) == std::mem::discriminant(b)
-    }
-}
-
 impl Display for Valor {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         match self {
