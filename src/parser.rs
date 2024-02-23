@@ -187,74 +187,84 @@ fn operacao_nao_suportada<T>(lhs: &Valor, rhs: &Valor, op: &Operador, pos: &Posi
 
 #[derive(Clone)]
 struct WithPosition<T> {
-	item: T,
-	pos: Position
+    item: T,
+    pos: Position,
 }
 
 #[derive(Clone)]
 enum Node {
-	Val(WithPosition<Valor>),
-	Ope(Box<Node>, WithPosition<Operador>, Box<Node>),
+    Val(WithPosition<Valor>),
+    Ope(Box<Node>, WithPosition<Operador>, Box<Node>),
 }
 
 fn expressao(lexer: &mut Lexer, env: &mut Environment) -> Result<Valor> {
-	let tree = find_expr(lexer, env)?;
-	traverse_expr(tree)
+    let tree = find_expr(lexer, env)?;
+    traverse_expr(tree)
 }
 
-fn find_expr(lexer: &mut Lexer, env: &mut Environment) ->  Result<Node> {
-	let pos_lhs = lexer.pos.clone();
-	let lhs = get_valor(lexer, env)?;
-	let node_lhs = Node::Val(WithPosition { item: lhs, pos: pos_lhs });
+fn find_expr(lexer: &mut Lexer, env: &mut Environment) -> Result<Node> {
+    let pos_lhs = lexer.pos.clone();
+    let lhs = get_valor(lexer, env)?;
+    let node_lhs = Node::Val(WithPosition {
+        item: lhs,
+        pos: pos_lhs,
+    });
 
-	let pos_op = lexer.pos.clone();
-	let Ok(op) = get_operador(lexer) else {
-		lexer.pos = pos_op;
-		return Ok(node_lhs);
-	};
+    let pos_op = lexer.pos.clone();
+    let Ok(op) = get_operador(lexer) else {
+        lexer.pos = pos_op;
+        return Ok(node_lhs);
+    };
 
-	let node_rhs = find_expr(lexer, env)?;
+    let node_rhs = find_expr(lexer, env)?;
 
-	let result = Node::Ope(Box::new(node_lhs), WithPosition { item: op, pos: pos_op }, Box::new(node_rhs));
+    let result = Node::Ope(
+        Box::new(node_lhs),
+        WithPosition {
+            item: op,
+            pos: pos_op,
+        },
+        Box::new(node_rhs),
+    );
 
-	Ok(result)
+    Ok(result)
 }
 
 fn traverse_expr(node: Node) -> Result<Valor> {
-	let result = match node {
-		Node::Val(n) => n.item.clone(),
-		Node::Ope(lhs, WithPosition { item, pos }, rhs) => {
-			let result_lhs = traverse_expr(*lhs)?;
-			let result_rhs = traverse_expr(*rhs)?;
+    let result = match node {
+        Node::Val(n) => n.item.clone(),
+        Node::Ope(lhs, WithPosition { item, pos }, rhs) => {
+            let result_lhs = traverse_expr(*lhs)?;
+            let result_rhs = traverse_expr(*rhs)?;
 
-			match item {
-				Operador::Adicao => match result_lhs {
-					Valor::Numero(val1) => match result_rhs {
-						Valor::Numero(val2) => Valor::Numero(val1 + val2),
-						_ => operacao_nao_suportada(&result_lhs, &result_rhs, &item, &pos)?,
-					},
-					Valor::Texto(ref val1) => match result_rhs {
-						Valor::Numero(val2) => Valor::Texto(val1.to_owned() + &val2.to_string()),
-						Valor::Texto(val2) => Valor::Texto(val1.to_owned() + &val2),
-						Valor::Nulo => Valor::Texto(val1.to_owned()),
-						_ => operacao_nao_suportada(&result_lhs, &result_rhs, &item, &pos)?,
-					},
-					_ => operacao_nao_suportada(&result_lhs, &result_rhs, &item, &pos)?,
-				},
-				Operador::Subtracao => todo!(),
-				Operador::Multiplicacao => match result_lhs {
-					Valor::Numero(val1) => match result_rhs {
-						Valor::Numero(val2) => Valor::Numero(val1 * val2),
-						_ => operacao_nao_suportada(&result_lhs, &result_rhs, &item, &pos)?,
-					},
-					_ => operacao_nao_suportada(&result_lhs, &result_rhs, &item, &pos)?,
-				},
-				Operador::Divisao => todo!(),
-				Operador::Resto => todo!(),
-				_ => Err(Error::new(&format!("operador inválido {item}"), &pos))?,
-			}
-		},
-	};
+            match item {
+                Operador::Adicao => match result_lhs {
+                    Valor::Numero(val1) => match result_rhs {
+                        Valor::Numero(val2) => Valor::Numero(val1 + val2),
+                        _ => operacao_nao_suportada(&result_lhs, &result_rhs, &item, &pos)?,
+                    },
+                    Valor::Texto(ref val1) => match result_rhs {
+                        Valor::Numero(val2) => Valor::Texto(val1.to_owned() + &val2.to_string()),
+                        Valor::Texto(val2) => Valor::Texto(val1.to_owned() + &val2),
+                        Valor::Nulo => Valor::Texto(val1.to_owned()),
+                        _ => operacao_nao_suportada(&result_lhs, &result_rhs, &item, &pos)?,
+                    },
+                    _ => operacao_nao_suportada(&result_lhs, &result_rhs, &item, &pos)?,
+                },
+                Operador::Subtracao => todo!(),
+                Operador::Multiplicacao => match result_lhs {
+                    Valor::Numero(val1) => match result_rhs {
+                        Valor::Numero(val2) => Valor::Numero(val1 * val2),
+                        _ => operacao_nao_suportada(&result_lhs, &result_rhs, &item, &pos)?,
+                    },
+                    _ => operacao_nao_suportada(&result_lhs, &result_rhs, &item, &pos)?,
+                },
+                Operador::Divisao => todo!(),
+                Operador::Resto => todo!(),
+                _ => Err(Error::new(&format!("operador inválido {item}"), &pos))?,
+            }
+        }
+    };
 
-	Ok(result)
+    Ok(result)
 }
