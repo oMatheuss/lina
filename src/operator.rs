@@ -1,6 +1,6 @@
 use std::fmt::Display;
 
-#[derive(Debug, PartialEq)]
+#[derive(Debug, PartialEq, Clone)]
 pub enum Operador {
     MaiorQue,
     MenorQue,
@@ -20,10 +20,6 @@ pub enum Operador {
     RestoAtribuicao,
     AutoAdicao,
     AutoSubtracao,
-}
-
-pub trait ExecOpe {
-    fn exec() -> Result<(), ()>;
 }
 
 impl Display for Operador {

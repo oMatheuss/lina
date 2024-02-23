@@ -1,6 +1,9 @@
-seja c "hello"
-c += ", world"
+seja c "hello, "
+c += "world"
 
-imprima 3.14
+seja d 1
+d += 2 + 0.14
+
+imprima "resultado: " + d
 imprima c
 imprima "isso também funciona aqui"

@@ -49,7 +49,7 @@ pub fn interpret_code(lexer: &mut Lexer, env: &mut Environment) -> Result<()> {
             Token::Identificador(..) => atribuicao(lexer, env)?,
             Token::Imprima => {
                 lexer.next()?; // ignore token imprima
-                let value = get_valor(lexer, env)?;
+                let value = expressao(lexer, env)?;
                 match value {
                     Valor::Numero(value) => writeln!(env.output, "{value}"),
                     Valor::Texto(value) => writeln!(env.output, "{value}"),
@@ -146,8 +146,7 @@ fn atribuicao(lexer: &mut Lexer, env: &mut Environment) -> Result<()> {
     }
 
     //let rhs_pos = lexer.pos.clone();
-    // TODO: make a expr match
-    let rhs = get_valor(lexer, env)?; // read right hand side
+    let rhs = expressao(lexer, env)?; // read right hand side
 
     // need to read again because of rust
     let lhs = env.get_mut(&lhs_idt, &lhs_pos)?; // read left hand side
@@ -179,9 +178,83 @@ fn atribuicao(lexer: &mut Lexer, env: &mut Environment) -> Result<()> {
     Ok(())
 }
 
-fn operacao_nao_suportada(lhs: &Valor, rhs: &Valor, op: &Operador, pos: &Position) -> Result<()> {
+fn operacao_nao_suportada<T>(lhs: &Valor, rhs: &Valor, op: &Operador, pos: &Position) -> Result<T> {
     Err(Error::new(
         &format!("não é possivel usar o operador {op} entre {lhs} e {rhs}"),
         pos,
     ))
+}
+
+#[derive(Clone)]
+struct WithPosition<T> {
+	item: T,
+	pos: Position
+}
+
+#[derive(Clone)]
+enum Node {
+	Num(WithPosition<Valor>),
+	Ope(Box<Node>, WithPosition<Operador>, Box<Node>),
+}
+
+fn expressao(lexer: &mut Lexer, env: &mut Environment) -> Result<Valor> {
+	let tree = find_expr(lexer, env)?;
+	traverse_expr(tree)
+}
+
+fn find_expr(lexer: &mut Lexer, env: &mut Environment) ->  Result<Node> {
+	let pos_lhs = lexer.pos.clone();
+	let lhs = get_valor(lexer, env)?;
+	let node_lhs = Node::Num(WithPosition { item: lhs, pos: pos_lhs });
+
+	let pos_op = lexer.pos.clone();
+	let Ok(op) = get_operador(lexer) else {
+		lexer.pos = pos_op;
+		return Ok(node_lhs);
+	};
+
+	let node_rhs = find_expr(lexer, env)?;
+
+	let result = Node::Ope(Box::new(node_lhs), WithPosition { item: op, pos: pos_op }, Box::new(node_rhs));
+
+	Ok(result)
+}
+
+fn traverse_expr(node: Node) -> Result<Valor> {
+	let result = match node {
+		Node::Num(n) => n.item.clone(),
+		Node::Ope(lhs, WithPosition { item, pos }, rhs) => {
+			let result_lhs = traverse_expr(*lhs)?;
+			let result_rhs = traverse_expr(*rhs)?;
+
+			match item {
+				Operador::Adicao => match result_lhs {
+					Valor::Numero(val1) => match result_rhs {
+						Valor::Numero(val2) => Valor::Numero(val1 + val2),
+						_ => operacao_nao_suportada(&result_lhs, &result_rhs, &item, &pos)?,
+					},
+					Valor::Texto(ref val1) => match result_rhs {
+						Valor::Numero(val2) => Valor::Texto(val1.to_owned() + &val2.to_string()),
+						Valor::Texto(val2) => Valor::Texto(val1.to_owned() + &val2),
+						Valor::Nulo => Valor::Texto(val1.to_owned()),
+						_ => operacao_nao_suportada(&result_lhs, &result_rhs, &item, &pos)?,
+					},
+					_ => operacao_nao_suportada(&result_lhs, &result_rhs, &item, &pos)?,
+				},
+				Operador::Subtracao => todo!(),
+				Operador::Multiplicacao => match result_lhs {
+					Valor::Numero(val1) => match result_rhs {
+						Valor::Numero(val2) => Valor::Numero(val1 * val2),
+						_ => operacao_nao_suportada(&result_lhs, &result_rhs, &item, &pos)?,
+					},
+					_ => operacao_nao_suportada(&result_lhs, &result_rhs, &item, &pos)?,
+				},
+				Operador::Divisao => todo!(),
+				Operador::Resto => todo!(),
+				_ => Err(Error::new(&format!("operador inválido {item}"), &pos))?,
+			}
+		},
+	};
+
+	Ok(result)
 }
