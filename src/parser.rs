@@ -193,7 +193,7 @@ struct WithPosition<T> {
 
 #[derive(Clone)]
 enum Node {
-	Num(WithPosition<Valor>),
+	Val(WithPosition<Valor>),
 	Ope(Box<Node>, WithPosition<Operador>, Box<Node>),
 }
 
@@ -205,7 +205,7 @@ fn expressao(lexer: &mut Lexer, env: &mut Environment) -> Result<Valor> {
 fn find_expr(lexer: &mut Lexer, env: &mut Environment) ->  Result<Node> {
 	let pos_lhs = lexer.pos.clone();
 	let lhs = get_valor(lexer, env)?;
-	let node_lhs = Node::Num(WithPosition { item: lhs, pos: pos_lhs });
+	let node_lhs = Node::Val(WithPosition { item: lhs, pos: pos_lhs });
 
 	let pos_op = lexer.pos.clone();
 	let Ok(op) = get_operador(lexer) else {
@@ -222,7 +222,7 @@ fn find_expr(lexer: &mut Lexer, env: &mut Environment) ->  Result<Node> {
 
 fn traverse_expr(node: Node) -> Result<Valor> {
 	let result = match node {
-		Node::Num(n) => n.item.clone(),
+		Node::Val(n) => n.item.clone(),
 		Node::Ope(lhs, WithPosition { item, pos }, rhs) => {
 			let result_lhs = traverse_expr(*lhs)?;
 			let result_rhs = traverse_expr(*rhs)?;
