@@ -1,9 +1,9 @@
-seja foo 1
+seja foo = 1
 
-enquanto foo < 5 faça
-	seja bar 0
+enquanto foo < 5
+	seja bar = 0
 
-	enquanto bar < 5 faça
+	enquanto bar < 5
 		imprima bar
 		bar += foo
 	fim

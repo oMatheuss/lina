@@ -2,6 +2,7 @@ use std::env;
 use std::fs::File;
 use std::io::Read;
 
+mod ast;
 mod error;
 mod lexer;
 mod operator;

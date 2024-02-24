@@ -1,3 +1,6 @@
+use crate::ast::{
+    Atribuicao, Declaracao, Enquanto, Expressao, Imprima, Incremento, Statement, WithPosition,
+};
 use crate::error::{Error, Result};
 use crate::lexer::Position;
 use crate::operator::Operador;
@@ -34,22 +37,123 @@ impl Environment {
     }
 }
 
-pub fn interpret_code(lexer: &mut Lexer, env: &mut Environment) -> Result<()> {
-    loop {
-        let pos_init = lexer.pos.clone();
-        let token = lexer.peek()?;
-        match token {
-            Token::Seja => {
-                lexer.next()?; // ignore token seja
-                let ident = get_identificador(lexer)?; // read identifier
-                let value = get_valor(lexer, env)?; // read value literal or identifier
-
-                env.variables.insert(ident, value); // set value
+pub fn next_statement(lexer: &mut Lexer) -> Result<Statement> {
+    let pos_init = lexer.pos.clone();
+    let token = lexer.peek()?;
+    let statement = match token {
+        Token::Seja => {
+            lexer.next()?; // ignore token seja
+            let nome = get_identificador(lexer)?; // read identifier
+            if let Some(Token::Operador(Operador::Atribuicao)) = lexer.peek().ok() {
+                lexer.next()?; // ignore token igual
+                let expressao = find_expr(lexer)?;
+                Statement::Declaracao(Declaracao {
+                    nome,
+                    valor: Some(expressao),
+                })
+            } else {
+                Statement::Declaracao(Declaracao { nome, valor: None })
             }
-            Token::Identificador(..) => atribuicao(lexer, env)?,
-            Token::Imprima => {
-                lexer.next()?; // ignore token imprima
-                let value = expressao(lexer, env)?;
+        }
+        Token::Identificador(..) => {
+            let nome = get_identificador(lexer)?; // read identifier
+            let operador = get_operador(lexer)?;
+            if operador.item == Operador::AutoAdicao || operador.item == Operador::AutoSubtracao {
+                Statement::Incremento(Incremento { nome })
+            } else {
+                let expressao = find_expr(lexer)?;
+                Statement::Atribuicao(Atribuicao {
+                    nome,
+                    operador,
+                    expressao,
+                })
+            }
+        }
+        Token::Imprima => {
+            lexer.next()?; // ignore token imprima
+            let expressao = find_expr(lexer)?;
+            Statement::Imprima(Imprima { expressao })
+        }
+        Token::Enquanto => {
+            lexer.next()?; // ignore token
+            let pos = lexer.pos.clone();
+            let condicao = WithPosition {
+                item: find_expr(lexer)?,
+                pos,
+            };
+            let mut corpo = Vec::new();
+            loop {
+                match lexer.peek()? {
+                    Token::Fim => {
+                        lexer.next()?; // ignore token fim
+                        break;
+                    }
+                    _ => corpo.push(next_statement(lexer)?),
+                }
+            }
+            Statement::Enquanto(Enquanto { corpo, condicao })
+        }
+        Token::Para => {
+            lexer.next()?; // ignore token para
+            todo!()
+        }
+        Token::FimDoArquivo => Statement::Fim,
+        _ => Err(Error::new(&format!("token inesperado {token}"), &pos_init))?,
+    };
+
+    Ok(statement)
+}
+
+pub fn interpret_code(lexer: &mut Lexer, env: &mut Environment) -> Result<()> {
+    let mut statements = Vec::new();
+
+    loop {
+        let statement = next_statement(lexer)?;
+        match statement {
+            Statement::Fim => break,
+            _ => statements.push(statement),
+        }
+    }
+
+    eval_code(statements, env)?;
+
+    Ok(())
+}
+
+fn eval_code(code: Vec<Statement>, env: &mut Environment) -> Result<()> {
+    let mut statements = code.into_iter();
+
+    while let Some(statement) = statements.next() {
+        match statement {
+            Statement::Declaracao(dcl) => {
+                if let Some(expr) = dcl.valor {
+                    let value = traverse_expr(expr, env)?;
+                    env.variables.insert(dcl.nome.item, value);
+                } else {
+                    env.variables.insert(dcl.nome.item, Valor::Nulo);
+                }
+            }
+            Statement::Atribuicao(atb) => atribuicao(atb, env)?,
+            Statement::Incremento(Incremento {
+                nome: WithPosition { item, pos },
+            }) => match env.get_mut(&item, &pos)? {
+                Valor::Numero(val) => *val += 1.0,
+                _ => Err(Error::new(&"operacao não suportada", &pos))?,
+            },
+            Statement::Enquanto(Enquanto { condicao, corpo }) => loop {
+                let expr = traverse_expr(condicao.item.clone(), env)?;
+                if let Valor::Booleano(result) = expr {
+                    if result {
+                        eval_code(corpo.clone(), env)?;
+                    } else {
+                        break;
+                    }
+                } else {
+                    Err(Error::new(&"operacao não suportada", &condicao.pos))?;
+                }
+            },
+            Statement::Imprima(Imprima { expressao }) => {
+                let value = traverse_expr(expressao, env)?;
                 match value {
                     Valor::Numero(value) => writeln!(env.output, "{value}"),
                     Valor::Texto(value) => writeln!(env.output, "{value}"),
@@ -57,28 +161,20 @@ pub fn interpret_code(lexer: &mut Lexer, env: &mut Environment) -> Result<()> {
                     Valor::Nulo => writeln!(env.output, "nulo"),
                     _ => todo!(),
                 }
-                .unwrap()
+                .unwrap();
             }
-            Token::Enquanto => {
-                lexer.next()?; // ignore token enquanto
-            }
-            Token::Para => {
-                lexer.next()?; // ignore token para
-            }
-            Token::Fim => break,
-            Token::FimDoArquivo => break,
-            _ => Err(Error::new(&format!("token inesperado {token}"), &pos_init))?,
+            Statement::Fim => break,
         }
     }
 
     Ok(())
 }
 
-fn get_operador(lexer: &mut Lexer) -> Result<Operador> {
+fn get_operador(lexer: &mut Lexer) -> Result<WithPosition<Operador>> {
     let pos = lexer.pos.clone();
     let token = lexer.next()?;
-    if let Token::Operador(ope) = token {
-        Ok(ope)
+    if let Token::Operador(item) = token {
+        Ok(WithPosition { item, pos })
     } else {
         Err(Error::new(
             &format!("esperado operador, obteve: {token}"),
@@ -87,29 +183,12 @@ fn get_operador(lexer: &mut Lexer) -> Result<Operador> {
     }
 }
 
-fn get_valor(lexer: &mut Lexer, env: &Environment) -> Result<Valor> {
-    let pos = lexer.pos.clone();
-    let token = lexer.next()?;
-
-    match token {
-        Token::Valor(value) => Ok(value),
-        Token::Identificador(name) => {
-            let value = env.get(&name, &pos)?.clone();
-            Ok(value)
-        }
-        _ => Err(Error::new(
-            &format!("esperava-se um valor, encontrou {token}"),
-            &pos,
-        ))?,
-    }
-}
-
-fn get_identificador(lexer: &mut Lexer) -> Result<String> {
+fn get_identificador(lexer: &mut Lexer) -> Result<WithPosition<String>> {
     let pos = lexer.pos.clone();
     let token = lexer.next()?;
 
     if let Token::Identificador(name) = token {
-        Ok(name)
+        Ok(WithPosition { item: name, pos })
     } else {
         Err(Error::new(
             &format!("esperava-se um identificador, encontrou {token}"),
@@ -118,61 +197,65 @@ fn get_identificador(lexer: &mut Lexer) -> Result<String> {
     }
 }
 
-fn atribuicao(lexer: &mut Lexer, env: &mut Environment) -> Result<()> {
-    let lhs_pos = lexer.pos.clone(); // get lhs position
-    let lhs_idt = get_identificador(lexer)?;
-    let lhs = env.get_mut(&lhs_idt, &lhs_pos)?; // read left hand side
+fn atribuicao(statement: Atribuicao, env: &mut Environment) -> Result<()> {
+    let ident = statement.nome;
+    let lhs = env.get_mut(&ident.item, &ident.pos)?; // read left hand side
 
-    let op_pos = lexer.pos.clone();
-    let op = get_operador(lexer)?; // read operator
+    let op = statement.operador; // read operator
 
     // check if operator is of auto assigniment and execute
-    match op {
+    match op.item {
         Operador::AutoAdicao => match lhs {
             Valor::Numero(value) => *value += 1.0,
             _ => Err(Error::new(
-                &format!("operador {op} só pode ser usado em números"),
-                &lhs_pos,
+                &format!("operador {} só pode ser usado em números", op.item),
+                &op.pos,
             ))?,
         },
         Operador::AutoSubtracao => match lhs {
             Valor::Numero(value) => *value -= 1.0,
             _ => Err(Error::new(
-                &format!("operador {op} só pode ser usado em números"),
-                &lhs_pos,
+                &format!("operador {} só pode ser usado em números", op.item),
+                &op.pos,
             ))?,
         },
         _ => {} // do nothing
     }
 
     //let rhs_pos = lexer.pos.clone();
-    let rhs = expressao(lexer, env)?; // read right hand side
+    let rhs = traverse_expr(statement.expressao, env)?; // read right hand side
 
     // need to read again because of rust
-    let lhs = env.get_mut(&lhs_idt, &lhs_pos)?; // read left hand side
+    let lhs = env.get_mut(&ident.item, &ident.pos)?; // read left hand side
 
-    match op {
+    match op.item {
         Operador::Atribuicao => *lhs = rhs,
         Operador::SomaAtribuicao => match lhs {
             Valor::Numero(val1) => match rhs {
                 Valor::Numero(val2) => *val1 += val2,
-                _ => operacao_nao_suportada(lhs, &rhs, &op, &lhs_pos)?,
+                _ => operacao_nao_suportada(lhs, &rhs, &op.item, &ident.pos)?,
             },
             Valor::Texto(val1) => match rhs {
                 Valor::Numero(val2) => val1.push_str(&val2.to_string()),
                 Valor::Texto(val2) => val1.push_str(&val2.to_string()),
                 Valor::Booleano(val2) => val1.push_str(&val2.to_string()),
                 Valor::Nulo => {}
-                _ => operacao_nao_suportada(lhs, &rhs, &op, &lhs_pos)?,
+                _ => operacao_nao_suportada(lhs, &rhs, &op.item, &ident.pos)?,
             },
-            Valor::Nulo => Err(Error::new("impossivel incrementar um valor nulo", &lhs_pos))?,
-            _ => operacao_nao_suportada(lhs, &rhs, &op, &lhs_pos)?,
+            Valor::Nulo => Err(Error::new(
+                "impossivel incrementar um valor nulo",
+                &ident.pos,
+            ))?,
+            _ => operacao_nao_suportada(lhs, &rhs, &op.item, &ident.pos)?,
         },
         Operador::SubtracaoAtribuicao => todo!(),
         Operador::MultiplicacaoAtribuicao => todo!(),
         Operador::DivisaoAtribuicao => todo!(),
         Operador::RestoAtribuicao => todo!(),
-        _ => Err(Error::new(&format!("operador inválido {op}"), &op_pos))?,
+        _ => Err(Error::new(
+            &format!("operador inválido {}", op.item),
+            &op.pos,
+        ))?,
     };
 
     Ok(())
@@ -185,30 +268,24 @@ fn operacao_nao_suportada<T>(lhs: &Valor, rhs: &Valor, op: &Operador, pos: &Posi
     ))
 }
 
-#[derive(Clone)]
-struct WithPosition<T> {
-    item: T,
-    pos: Position,
-}
-
-#[derive(Clone)]
-enum Node {
-    Val(WithPosition<Valor>),
-    Ope(Box<Node>, WithPosition<Operador>, Box<Node>),
-}
-
-fn expressao(lexer: &mut Lexer, env: &mut Environment) -> Result<Valor> {
-    let tree = find_expr(lexer, env)?;
-    traverse_expr(tree)
-}
-
-fn find_expr(lexer: &mut Lexer, env: &mut Environment) -> Result<Node> {
+fn find_expr(lexer: &mut Lexer) -> Result<Expressao> {
     let pos_lhs = lexer.pos.clone();
-    let lhs = get_valor(lexer, env)?;
-    let node_lhs = Node::Val(WithPosition {
-        item: lhs,
-        pos: pos_lhs,
-    });
+    let lhs = lexer.next()?;
+
+    let node_lhs = match lhs {
+        Token::Identificador(nome) => Expressao::Var(WithPosition {
+            item: nome,
+            pos: pos_lhs,
+        }),
+        Token::Valor(val) => Expressao::Val(WithPosition {
+            item: val,
+            pos: pos_lhs,
+        }),
+        _ => Err(Error::new(
+            &format!("esperava-se valor ou variavel, encontrou {lhs}"),
+            &pos_lhs,
+        ))?,
+    };
 
     let pos_op = lexer.pos.clone();
     let Ok(op) = get_operador(lexer) else {
@@ -216,12 +293,12 @@ fn find_expr(lexer: &mut Lexer, env: &mut Environment) -> Result<Node> {
         return Ok(node_lhs);
     };
 
-    let node_rhs = find_expr(lexer, env)?;
+    let node_rhs = find_expr(lexer)?;
 
-    let result = Node::Ope(
+    let result = Expressao::Ope(
         Box::new(node_lhs),
         WithPosition {
-            item: op,
+            item: op.item,
             pos: pos_op,
         },
         Box::new(node_rhs),
@@ -230,12 +307,13 @@ fn find_expr(lexer: &mut Lexer, env: &mut Environment) -> Result<Node> {
     Ok(result)
 }
 
-fn traverse_expr(node: Node) -> Result<Valor> {
+fn traverse_expr(node: Expressao, env: &mut Environment) -> Result<Valor> {
     let result = match node {
-        Node::Val(n) => n.item.clone(),
-        Node::Ope(lhs, WithPosition { item, pos }, rhs) => {
-            let result_lhs = traverse_expr(*lhs)?;
-            let result_rhs = traverse_expr(*rhs)?;
+        Expressao::Var(WithPosition { item, pos }) => env.get(&item, &pos)?.clone(),
+        Expressao::Val(n) => n.item.clone(),
+        Expressao::Ope(lhs, WithPosition { item, pos }, rhs) => {
+            let result_lhs = traverse_expr(*lhs, env)?;
+            let result_rhs = traverse_expr(*rhs, env)?;
 
             match item {
                 Operador::Adicao => match result_lhs {

@@ -3,7 +3,7 @@ use crate::operator::Operador;
 use crate::token::Token;
 use crate::value::Valor;
 
-#[derive(PartialEq, PartialOrd, Clone)]
+#[derive(PartialEq, PartialOrd, Clone, Debug)]
 pub struct Position {
     pub file_name: String,
     pub line_num: usize,
