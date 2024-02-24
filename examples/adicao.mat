@@ -1,7 +1,7 @@
-seja c "hello, "
+seja c = "hello, "
 c += "world"
 
-seja d 1
+seja d = 1
 d += 2 + 0.14
 
 imprima "resultado: " + d
