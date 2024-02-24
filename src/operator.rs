@@ -7,12 +7,16 @@ pub enum Operador {
     MaiorIgualQue,
     MenorIgualQue,
     Igual,
+    CondicionalE,
+    CondicionalOu,
+
     Atribuicao,
     Adicao,
     Subtracao,
     Multiplicacao,
     Divisao,
     Resto,
+
     SomaAtribuicao,
     SubtracaoAtribuicao,
     MultiplicacaoAtribuicao,
@@ -30,12 +34,16 @@ impl Display for Operador {
             Operador::MaiorIgualQue => write!(f, ">="),
             Operador::MenorIgualQue => write!(f, "<="),
             Operador::Igual => write!(f, "=="),
+            Operador::CondicionalE => write!(f, "&&"),
+            Operador::CondicionalOu => write!(f, "||"),
+
             Operador::Atribuicao => write!(f, "="),
             Operador::Adicao => write!(f, "+"),
             Operador::Subtracao => write!(f, "-"),
             Operador::Multiplicacao => write!(f, "*"),
             Operador::Divisao => write!(f, "/"),
             Operador::Resto => write!(f, "%"),
+
             Operador::SomaAtribuicao => write!(f, "+="),
             Operador::SubtracaoAtribuicao => write!(f, "-="),
             Operador::MultiplicacaoAtribuicao => write!(f, "*="),

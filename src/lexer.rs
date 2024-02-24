@@ -152,7 +152,7 @@ impl Lexer {
 
                 Ok(Token::Valor(Valor::Numero(num)))
             }
-            '<' | '>' | '=' | '+' | '-' | '*' | '/' | '%' => {
+            '<' | '>' | '=' | '+' | '-' | '*' | '/' | '%' | '&' | '|' => {
                 self.pos.incr();
                 if let Some(&next_c) = self.code.get(self.pos.curr_char) {
                     let operador = match c {
@@ -226,6 +226,22 @@ impl Lexer {
                                 Operador::Resto
                             }
                         }
+                        '&' => {
+                            if next_c == '&' {
+                                self.pos.incr();
+                                Operador::CondicionalE
+                            } else {
+                                todo!()
+                            }
+                        }
+                        '|' => {
+                            if next_c == '|' {
+                                self.pos.incr();
+                                Operador::CondicionalOu
+                            } else {
+                                todo!()
+                            }
+                        }
                         _ => unreachable!(),
                     };
 
@@ -240,6 +256,8 @@ impl Lexer {
                         '*' => Operador::Multiplicacao,
                         '/' => Operador::Divisao,
                         '%' => Operador::Resto,
+                        '&' => todo!(),
+                        '|' => todo!(),
                         _ => unreachable!(),
                     };
                     Ok(Token::Operador(operador))

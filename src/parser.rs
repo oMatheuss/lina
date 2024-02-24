@@ -241,6 +241,7 @@ fn traverse_expr(node: Node) -> Result<Valor> {
                 Operador::Adicao => match result_lhs {
                     Valor::Numero(val1) => match result_rhs {
                         Valor::Numero(val2) => Valor::Numero(val1 + val2),
+                        Valor::Texto(ref val2) => Valor::Texto(val1.to_string() + &val2.to_owned()),
                         _ => operacao_nao_suportada(&result_lhs, &result_rhs, &item, &pos)?,
                     },
                     Valor::Texto(ref val1) => match result_rhs {
@@ -251,7 +252,13 @@ fn traverse_expr(node: Node) -> Result<Valor> {
                     },
                     _ => operacao_nao_suportada(&result_lhs, &result_rhs, &item, &pos)?,
                 },
-                Operador::Subtracao => todo!(),
+                Operador::Subtracao => match result_lhs {
+                    Valor::Numero(val1) => match result_rhs {
+                        Valor::Numero(val2) => Valor::Numero(val1 - val2),
+                        _ => operacao_nao_suportada(&result_lhs, &result_rhs, &item, &pos)?,
+                    },
+                    _ => operacao_nao_suportada(&result_lhs, &result_rhs, &item, &pos)?,
+                },
                 Operador::Multiplicacao => match result_lhs {
                     Valor::Numero(val1) => match result_rhs {
                         Valor::Numero(val2) => Valor::Numero(val1 * val2),
@@ -261,6 +268,60 @@ fn traverse_expr(node: Node) -> Result<Valor> {
                 },
                 Operador::Divisao => todo!(),
                 Operador::Resto => todo!(),
+
+                Operador::MaiorQue => match result_lhs {
+                    Valor::Numero(val1) => match result_rhs {
+                        Valor::Numero(val2) => Valor::Booleano(val1 > val2),
+                        _ => operacao_nao_suportada(&result_lhs, &result_rhs, &item, &pos)?,
+                    },
+                    _ => operacao_nao_suportada(&result_lhs, &result_rhs, &item, &pos)?,
+                },
+                Operador::MenorQue => match result_lhs {
+                    Valor::Numero(val1) => match result_rhs {
+                        Valor::Numero(val2) => Valor::Booleano(val1 < val2),
+                        _ => operacao_nao_suportada(&result_lhs, &result_rhs, &item, &pos)?,
+                    },
+                    _ => operacao_nao_suportada(&result_lhs, &result_rhs, &item, &pos)?,
+                },
+                Operador::MaiorIgualQue => match result_lhs {
+                    Valor::Numero(val1) => match result_rhs {
+                        Valor::Numero(val2) => Valor::Booleano(val1 >= val2),
+                        _ => operacao_nao_suportada(&result_lhs, &result_rhs, &item, &pos)?,
+                    },
+                    _ => operacao_nao_suportada(&result_lhs, &result_rhs, &item, &pos)?,
+                },
+                Operador::MenorIgualQue => match result_lhs {
+                    Valor::Numero(val1) => match result_rhs {
+                        Valor::Numero(val2) => Valor::Booleano(val1 <= val2),
+                        _ => operacao_nao_suportada(&result_lhs, &result_rhs, &item, &pos)?,
+                    },
+                    _ => operacao_nao_suportada(&result_lhs, &result_rhs, &item, &pos)?,
+                },
+                Operador::Igual => match result_lhs {
+                    Valor::Numero(val1) => match result_rhs {
+                        Valor::Numero(val2) => Valor::Booleano(val1 == val2),
+                        _ => operacao_nao_suportada(&result_lhs, &result_rhs, &item, &pos)?,
+                    },
+                    Valor::Texto(ref val1) => match result_rhs {
+                        Valor::Texto(ref val2) => Valor::Booleano(val1 == val2),
+                        _ => operacao_nao_suportada(&result_lhs, &result_rhs, &item, &pos)?,
+                    },
+                    _ => operacao_nao_suportada(&result_lhs, &result_rhs, &item, &pos)?,
+                },
+                Operador::CondicionalE => match result_lhs {
+                    Valor::Booleano(val1) => match result_rhs {
+                        Valor::Booleano(val2) => Valor::Booleano(val1 && val2),
+                        _ => operacao_nao_suportada(&result_lhs, &result_rhs, &item, &pos)?,
+                    },
+                    _ => operacao_nao_suportada(&result_lhs, &result_rhs, &item, &pos)?,
+                },
+                Operador::CondicionalOu => match result_lhs {
+                    Valor::Booleano(val1) => match result_rhs {
+                        Valor::Booleano(val2) => Valor::Booleano(val1 || val2),
+                        _ => operacao_nao_suportada(&result_lhs, &result_rhs, &item, &pos)?,
+                    },
+                    _ => operacao_nao_suportada(&result_lhs, &result_rhs, &item, &pos)?,
+                },
                 _ => Err(Error::new(&format!("operador inválido {item}"), &pos))?,
             }
         }
