@@ -20,6 +20,7 @@ pub trait TEnvironment {
 pub struct Environment {
     variables: HashMap<String, Valor>,
     pub output: Box<dyn Write>,
+    
 }
 
 impl Environment {
@@ -40,6 +41,14 @@ impl Environment {
         self.variables
             .get_mut(k)
             .ok_or_else(|| Error::new(&format!("variavel não definida {k}"), pos))
+    }
+
+    fn set(&mut self, k: &String, v: Valor, pos: &Position) -> Result<()> {
+        if self.variables.insert(k.to_string(), v).is_none() {
+            Ok(())
+        } else {
+            Err(Error::new(&format!("redeclaração da variavel {k}"), pos))
+        }
     }
 }
 
@@ -134,9 +143,9 @@ fn eval_code(code: Vec<Statement>, env: &mut Environment) -> Result<()> {
             Statement::Declaracao(dcl) => {
                 if let Some(expr) = dcl.valor {
                     let value = traverse_expr(expr, env)?;
-                    env.variables.insert(dcl.nome.item, value);
+                    env.set(&dcl.nome.item, value, &dcl.nome.pos)?;
                 } else {
-                    env.variables.insert(dcl.nome.item, Valor::Nulo);
+                    env.set(&dcl.nome.item, Valor::Nulo, &dcl.nome.pos)?;
                 }
             }
             Statement::Atribuicao(atb) => atribuicao(atb, env)?,
