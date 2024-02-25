@@ -11,9 +11,15 @@ use crate::Lexer;
 use std::collections::HashMap;
 use std::io::Write;
 
+pub trait TEnvironment {
+    fn get(&self, k: &String, pos: &Position) -> Result<&Valor>;
+    fn get_mut(&mut self, k: &String, pos: &Position) -> Result<&mut Valor>;
+    fn set(&mut self, k: &String, v: Valor) -> Result<()>;
+}
+
 pub struct Environment {
     variables: HashMap<String, Valor>,
-    output: Box<dyn Write>,
+    pub output: Box<dyn Write>,
 }
 
 impl Environment {
