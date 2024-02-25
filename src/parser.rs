@@ -20,7 +20,6 @@ pub trait TEnvironment {
 pub struct Environment {
     variables: HashMap<String, Valor>,
     pub output: Box<dyn Write>,
-    
 }
 
 impl Environment {
