@@ -11,10 +11,11 @@ use crate::Lexer;
 use std::collections::HashMap;
 use std::io::Write;
 
-pub trait TEnvironment {
+trait Scope {
     fn get(&self, k: &String, pos: &Position) -> Result<&Valor>;
     fn get_mut(&mut self, k: &String, pos: &Position) -> Result<&mut Valor>;
-    fn set(&mut self, k: &String, v: Valor) -> Result<()>;
+    fn set(&mut self, k: &String, v: Valor, pos: &Position) -> Result<()>;
+    fn print(&mut self, text: &str);
 }
 
 pub struct Environment {
@@ -29,17 +30,23 @@ impl Environment {
             output: Box::new(std::io::stdout()),
         }
     }
+}
 
+impl Scope for Environment {
     fn get(&self, k: &String, pos: &Position) -> Result<&Valor> {
-        self.variables
-            .get(k)
-            .ok_or_else(|| Error::new(&format!("variavel não definida {k}"), pos))
+        if let Some(val) = self.variables.get(k) {
+            Ok(val)
+        } else {
+            Err(Error::new(&format!("variavel não definida {k}"), pos))
+        }
     }
 
     fn get_mut(&mut self, k: &String, pos: &Position) -> Result<&mut Valor> {
-        self.variables
-            .get_mut(k)
-            .ok_or_else(|| Error::new(&format!("variavel não definida {k}"), pos))
+        if let Some(val) = self.variables.get_mut(k) {
+            Ok(val)
+        } else {
+            Err(Error::new(&format!("variavel não definida {k}"), pos))
+        }
     }
 
     fn set(&mut self, k: &String, v: Valor, pos: &Position) -> Result<()> {
@@ -47,6 +54,60 @@ impl Environment {
             Ok(())
         } else {
             Err(Error::new(&format!("redeclaração da variavel {k}"), pos))
+        }
+    }
+
+    fn print(&mut self, text: &str) {
+        writeln!(self.output, "{text}").expect("mensagem ser escrita no console")
+    }
+}
+
+struct InnerScope<'a> {
+    variables: HashMap<String, Valor>,
+    outer_scope: Option<Box<&'a mut dyn Scope>>,
+}
+
+impl<'a> InnerScope<'a> {
+    pub fn new() -> Self {
+        Self {
+            variables: HashMap::new(),
+            outer_scope: None,
+        }
+    }
+}
+
+impl<'a> Scope for InnerScope<'a> {
+    fn get(&self, k: &String, pos: &Position) -> Result<&Valor> {
+        if let Some(val) = self.variables.get(k) {
+            Ok(val)
+        } else if let Some(outer) = &self.outer_scope {
+            outer.get(k, pos)
+        } else {
+            Err(Error::new(&format!("variavel não definida {k}"), pos))
+        }
+    }
+
+    fn get_mut(&mut self, k: &String, pos: &Position) -> Result<&mut Valor> {
+        if let Some(val) = self.variables.get_mut(k) {
+            Ok(val)
+        } else if let Some(outer) = &mut self.outer_scope {
+            outer.get_mut(k, pos)
+        } else {
+            Err(Error::new(&format!("variavel não definida {k}"), pos))
+        }
+    }
+
+    fn set(&mut self, k: &String, v: Valor, pos: &Position) -> Result<()> {
+        if self.variables.insert(k.to_string(), v).is_none() {
+            Ok(())
+        } else {
+            Err(Error::new(&format!("redeclaração da variavel {k}"), pos))
+        }
+    }
+
+    fn print(&mut self, text: &str) {
+        if let Some(outer) = &mut self.outer_scope {
+            outer.print(text)
         }
     }
 }
@@ -93,7 +154,7 @@ pub fn next_statement(lexer: &mut Lexer) -> Result<Statement> {
             let pos = lexer.pos.clone();
             let condicao = WithPosition {
                 item: find_expr(lexer)?,
-                pos,
+                pos: pos.clone(),
             };
             let mut corpo = Vec::new();
             loop {
@@ -101,6 +162,9 @@ pub fn next_statement(lexer: &mut Lexer) -> Result<Statement> {
                     Token::Fim => {
                         lexer.next()?; // ignore token fim
                         break;
+                    }
+                    Token::FimDoArquivo => {
+                        Err(Error::new("fim inesperado do arquivo", &lexer.pos))?
                     }
                     _ => corpo.push(next_statement(lexer)?),
                 }
@@ -134,7 +198,7 @@ pub fn interpret_code(lexer: &mut Lexer, env: &mut Environment) -> Result<()> {
     Ok(())
 }
 
-fn eval_code(code: Vec<Statement>, env: &mut Environment) -> Result<()> {
+fn eval_code(code: Vec<Statement>, env: &mut impl Scope) -> Result<()> {
     let mut statements = code.into_iter();
 
     while let Some(statement) = statements.next() {
@@ -158,7 +222,9 @@ fn eval_code(code: Vec<Statement>, env: &mut Environment) -> Result<()> {
                 let expr = traverse_expr(condicao.item.clone(), env)?;
                 if let Valor::Booleano(result) = expr {
                     if result {
-                        eval_code(corpo.clone(), env)?;
+                        let mut scope = InnerScope::new();
+                        scope.outer_scope = Some(Box::new(env));
+                        eval_code(corpo.clone(), &mut scope)?;
                     } else {
                         break;
                     }
@@ -169,13 +235,12 @@ fn eval_code(code: Vec<Statement>, env: &mut Environment) -> Result<()> {
             Statement::Imprima(Imprima { expressao }) => {
                 let value = traverse_expr(expressao, env)?;
                 match value {
-                    Valor::Numero(value) => writeln!(env.output, "{value}"),
-                    Valor::Texto(value) => writeln!(env.output, "{value}"),
-                    Valor::Booleano(value) => writeln!(env.output, "{value}"),
-                    Valor::Nulo => writeln!(env.output, "nulo"),
+                    Valor::Numero(value) => env.print(&value.to_string()),
+                    Valor::Texto(value) => env.print(&value.to_string()),
+                    Valor::Booleano(value) => env.print(&value.to_string()),
+                    Valor::Nulo => env.print("nulo"),
                     _ => todo!(),
-                }
-                .unwrap();
+                };
             }
             Statement::Fim => break,
         }
@@ -211,7 +276,7 @@ fn get_identificador(lexer: &mut Lexer) -> Result<WithPosition<String>> {
     }
 }
 
-fn atribuicao(statement: Atribuicao, env: &mut Environment) -> Result<()> {
+fn atribuicao(statement: Atribuicao, env: &mut impl Scope) -> Result<()> {
     let ident = statement.nome;
     let lhs = env.get_mut(&ident.item, &ident.pos)?; // read left hand side
 
@@ -321,7 +386,7 @@ fn find_expr(lexer: &mut Lexer) -> Result<Expressao> {
     Ok(result)
 }
 
-fn traverse_expr(node: Expressao, env: &mut Environment) -> Result<Valor> {
+fn traverse_expr(node: Expressao, env: &mut impl Scope) -> Result<Valor> {
     let result = match node {
         Expressao::Var(WithPosition { item, pos }) => env.get(&item, &pos)?.clone(),
         Expressao::Val(n) => n.item.clone(),
