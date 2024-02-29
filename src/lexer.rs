@@ -1,7 +1,5 @@
 use crate::error::{Error, Result};
-use crate::operator::Operador;
-use crate::token::Token;
-use crate::value::Valor;
+use crate::token::{Token, Operador, Valor};
 
 #[derive(PartialEq, PartialOrd, Clone, Debug)]
 pub struct Position {

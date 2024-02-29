@@ -1,10 +1,8 @@
 mod ast;
 mod error;
 mod lexer;
-mod operator;
 mod parser;
 mod token;
-mod value;
 
 use lexer::Lexer;
 use parser::{interpret_code, Environment};

@@ -3,9 +3,7 @@ use crate::ast::{
 };
 use crate::error::{Error, Result};
 use crate::lexer::Position;
-use crate::operator::Operador;
-use crate::token::Token;
-use crate::value::Valor;
+use crate::token::{Token, Valor, Operador};
 use crate::Lexer;
 
 use std::collections::HashMap;

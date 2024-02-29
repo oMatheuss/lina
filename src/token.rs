@@ -1,7 +1,5 @@
 use std::fmt::Display;
 
-use crate::{operator::Operador, value::Valor};
-
 #[derive(Debug, PartialEq)]
 pub enum Token {
     Seja,
@@ -37,6 +35,82 @@ impl Display for Token {
             Token::Operador(ope) => write!(f, "operador: {ope}"),
             Token::Fim => write!(f, "fim"),
             Token::FimDoArquivo => write!(f, "eof"),
+        }
+    }
+}
+
+#[derive(Debug, PartialEq, Clone)]
+pub enum Operador {
+    MaiorQue,
+    MenorQue,
+    MaiorIgualQue,
+    MenorIgualQue,
+    Igual,
+    CondicionalE,
+    CondicionalOu,
+
+    Atribuicao,
+    Adicao,
+    Subtracao,
+    Multiplicacao,
+    Divisao,
+    Resto,
+
+    SomaAtribuicao,
+    SubtracaoAtribuicao,
+    MultiplicacaoAtribuicao,
+    DivisaoAtribuicao,
+    RestoAtribuicao,
+    AutoAdicao,
+    AutoSubtracao,
+}
+
+impl Display for Operador {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        match self {
+            Operador::MaiorQue => write!(f, ">"),
+            Operador::MenorQue => write!(f, "<"),
+            Operador::MaiorIgualQue => write!(f, ">="),
+            Operador::MenorIgualQue => write!(f, "<="),
+            Operador::Igual => write!(f, "=="),
+            Operador::CondicionalE => write!(f, "&&"),
+            Operador::CondicionalOu => write!(f, "||"),
+
+            Operador::Atribuicao => write!(f, "="),
+            Operador::Adicao => write!(f, "+"),
+            Operador::Subtracao => write!(f, "-"),
+            Operador::Multiplicacao => write!(f, "*"),
+            Operador::Divisao => write!(f, "/"),
+            Operador::Resto => write!(f, "%"),
+
+            Operador::SomaAtribuicao => write!(f, "+="),
+            Operador::SubtracaoAtribuicao => write!(f, "-="),
+            Operador::MultiplicacaoAtribuicao => write!(f, "*="),
+            Operador::DivisaoAtribuicao => write!(f, "/="),
+            Operador::RestoAtribuicao => write!(f, "%="),
+            Operador::AutoAdicao => write!(f, "++"),
+            Operador::AutoSubtracao => write!(f, "--"),
+        }
+    }
+}
+
+#[derive(Debug, PartialEq, Clone)]
+pub enum Valor {
+    Numero(f32),
+    Texto(String),
+    Booleano(bool),
+    Vetor(Vec<Valor>),
+    Nulo,
+}
+
+impl Display for Valor {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        match self {
+            Valor::Numero(..) => write!(f, "numero"),
+            Valor::Texto(..) => write!(f, "texto"),
+            Valor::Booleano(..) => write!(f, "booleano"),
+            Valor::Vetor(..) => write!(f, "vetor"),
+            Valor::Nulo => write!(f, "nulo"),
         }
     }
 }
