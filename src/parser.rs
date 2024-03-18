@@ -2,7 +2,7 @@ use crate::ast::{
     Atribuicao, Declaracao, Enquanto, Expressao, Imprima, Incremento, Statement, WithPosition,
 };
 use crate::error::{Error, Result};
-use crate::lexer::Position;
+use crate::lexer::LexerPosition;
 use crate::token::{Token, Valor, Operador};
 use crate::Lexer;
 
@@ -10,9 +10,9 @@ use std::collections::HashMap;
 use std::io::Write;
 
 trait Scope {
-    fn get(&self, k: &String, pos: &Position) -> Result<&Valor>;
-    fn get_mut(&mut self, k: &String, pos: &Position) -> Result<&mut Valor>;
-    fn set(&mut self, k: &String, v: Valor, pos: &Position) -> Result<()>;
+    fn get(&self, k: &String, pos: &LexerPosition) -> Result<&Valor>;
+    fn get_mut(&mut self, k: &String, pos: &LexerPosition) -> Result<&mut Valor>;
+    fn set(&mut self, k: &String, v: Valor, pos: &LexerPosition) -> Result<()>;
     fn print(&mut self, text: &str);
 }
 
@@ -31,7 +31,7 @@ impl Environment {
 }
 
 impl Scope for Environment {
-    fn get(&self, k: &String, pos: &Position) -> Result<&Valor> {
+    fn get(&self, k: &String, pos: &LexerPosition) -> Result<&Valor> {
         if let Some(val) = self.variables.get(k) {
             Ok(val)
         } else {
@@ -39,7 +39,7 @@ impl Scope for Environment {
         }
     }
 
-    fn get_mut(&mut self, k: &String, pos: &Position) -> Result<&mut Valor> {
+    fn get_mut(&mut self, k: &String, pos: &LexerPosition) -> Result<&mut Valor> {
         if let Some(val) = self.variables.get_mut(k) {
             Ok(val)
         } else {
@@ -47,7 +47,7 @@ impl Scope for Environment {
         }
     }
 
-    fn set(&mut self, k: &String, v: Valor, pos: &Position) -> Result<()> {
+    fn set(&mut self, k: &String, v: Valor, pos: &LexerPosition) -> Result<()> {
         if self.variables.insert(k.to_string(), v).is_none() {
             Ok(())
         } else {
@@ -75,7 +75,7 @@ impl<'a> InnerScope<'a> {
 }
 
 impl<'a> Scope for InnerScope<'a> {
-    fn get(&self, k: &String, pos: &Position) -> Result<&Valor> {
+    fn get(&self, k: &String, pos: &LexerPosition) -> Result<&Valor> {
         if let Some(val) = self.variables.get(k) {
             Ok(val)
         } else if let Some(outer) = &self.outer_scope {
@@ -85,7 +85,7 @@ impl<'a> Scope for InnerScope<'a> {
         }
     }
 
-    fn get_mut(&mut self, k: &String, pos: &Position) -> Result<&mut Valor> {
+    fn get_mut(&mut self, k: &String, pos: &LexerPosition) -> Result<&mut Valor> {
         if let Some(val) = self.variables.get_mut(k) {
             Ok(val)
         } else if let Some(outer) = &mut self.outer_scope {
@@ -95,7 +95,7 @@ impl<'a> Scope for InnerScope<'a> {
         }
     }
 
-    fn set(&mut self, k: &String, v: Valor, pos: &Position) -> Result<()> {
+    fn set(&mut self, k: &String, v: Valor, pos: &LexerPosition) -> Result<()> {
         if self.variables.insert(k.to_string(), v).is_none() {
             Ok(())
         } else {
@@ -115,10 +115,10 @@ pub fn next_statement(lexer: &mut Lexer) -> Result<Statement> {
     let token = lexer.peek()?;
     let statement = match token {
         Token::Seja => {
-            lexer.next()?; // ignore token seja
+            lexer.next_token()?; // ignore token seja
             let nome = get_identificador(lexer)?; // read identifier
             if let Some(Token::Operador(Operador::Atribuicao)) = lexer.peek().ok() {
-                lexer.next()?; // ignore token igual
+                lexer.next_token()?; // ignore token igual
                 let expressao = find_expr(lexer)?;
                 Statement::Declaracao(Declaracao {
                     nome,
@@ -143,12 +143,12 @@ pub fn next_statement(lexer: &mut Lexer) -> Result<Statement> {
             }
         }
         Token::Imprima => {
-            lexer.next()?; // ignore token imprima
+            lexer.next_token()?; // ignore token imprima
             let expressao = find_expr(lexer)?;
             Statement::Imprima(Imprima { expressao })
         }
         Token::Enquanto => {
-            lexer.next()?; // ignore token
+            lexer.next_token()?; // ignore token
             let pos = lexer.pos.clone();
             let condicao = WithPosition {
                 item: find_expr(lexer)?,
@@ -158,7 +158,7 @@ pub fn next_statement(lexer: &mut Lexer) -> Result<Statement> {
             loop {
                 match lexer.peek()? {
                     Token::Fim => {
-                        lexer.next()?; // ignore token fim
+                        lexer.next_token()?; // ignore token fim
                         break;
                     }
                     Token::FimDoArquivo => {
@@ -170,7 +170,7 @@ pub fn next_statement(lexer: &mut Lexer) -> Result<Statement> {
             Statement::Enquanto(Enquanto { corpo, condicao })
         }
         Token::Para => {
-            lexer.next()?; // ignore token para
+            lexer.next_token()?; // ignore token para
             todo!()
         }
         Token::FimDoArquivo => Statement::Fim,
@@ -249,7 +249,7 @@ fn eval_code(code: Vec<Statement>, env: &mut impl Scope) -> Result<()> {
 
 fn get_operador(lexer: &mut Lexer) -> Result<WithPosition<Operador>> {
     let pos = lexer.pos.clone();
-    let token = lexer.next()?;
+    let token = lexer.next_token()?;
     if let Token::Operador(item) = token {
         Ok(WithPosition { item, pos })
     } else {
@@ -262,7 +262,7 @@ fn get_operador(lexer: &mut Lexer) -> Result<WithPosition<Operador>> {
 
 fn get_identificador(lexer: &mut Lexer) -> Result<WithPosition<String>> {
     let pos = lexer.pos.clone();
-    let token = lexer.next()?;
+    let token = lexer.next_token()?;
 
     if let Token::Identificador(name) = token {
         Ok(WithPosition { item: name, pos })
@@ -338,7 +338,7 @@ fn atribuicao(statement: Atribuicao, env: &mut impl Scope) -> Result<()> {
     Ok(())
 }
 
-fn operacao_nao_suportada<T>(lhs: &Valor, rhs: &Valor, op: &Operador, pos: &Position) -> Result<T> {
+fn operacao_nao_suportada<T>(lhs: &Valor, rhs: &Valor, op: &Operador, pos: &LexerPosition) -> Result<T> {
     Err(Error::new(
         &format!("não é possivel usar o operador {op} entre {lhs} e {rhs}"),
         pos,
@@ -347,7 +347,7 @@ fn operacao_nao_suportada<T>(lhs: &Valor, rhs: &Valor, op: &Operador, pos: &Posi
 
 fn find_expr(lexer: &mut Lexer) -> Result<Expressao> {
     let pos_lhs = lexer.pos.clone();
-    let lhs = lexer.next()?;
+    let lhs = lexer.next_token()?;
 
     let node_lhs = match lhs {
         Token::Identificador(nome) => Expressao::Var(WithPosition {

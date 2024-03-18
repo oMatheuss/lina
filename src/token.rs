@@ -1,5 +1,13 @@
 use std::fmt::Display;
 
+#[derive(Debug, Clone)]
+pub struct TokenPos {
+    pub col: usize,
+    pub row: usize,
+}
+
+pub struct TokenDef (Token, TokenPos);
+
 #[derive(Debug, PartialEq)]
 pub enum Token {
     Seja,

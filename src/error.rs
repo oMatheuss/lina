@@ -1,6 +1,6 @@
 use std::fmt::Display;
 
-use crate::lexer::Position;
+use crate::lexer::LexerPosition;
 
 pub struct Error {
     message: String,
@@ -10,7 +10,7 @@ pub struct Error {
 }
 
 impl Error {
-    pub fn new(message: &str, pos: &Position) -> Self {
+    pub fn new(message: &str, pos: &LexerPosition) -> Self {
         Error {
             message: String::from(message),
             row: pos.line_num,

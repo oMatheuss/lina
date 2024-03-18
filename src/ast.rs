@@ -1,10 +1,9 @@
-use crate::lexer::Position;
-use crate::token::{Operador, Valor};
+use crate::token::{Operador, TokenPos, Valor};
 
 #[derive(Debug, Clone)]
 pub struct WithPosition<T> {
     pub item: T,
-    pub pos: Position,
+    pub pos: TokenPos,
 }
 
 #[derive(Debug, Clone)]
