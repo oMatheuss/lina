@@ -6,10 +6,13 @@ pub struct TokenPos {
     pub row: usize,
 }
 
-pub struct TokenDef (Token, TokenPos);
+pub struct TokenDef<'a> {
+    pub kind: Token<'a>,
+    pub position: TokenPos,
+}
 
 #[derive(Debug, PartialEq)]
-pub enum Token {
+pub enum Token<'a> {
     Seja,
     Faca,
     Entao,
@@ -20,13 +23,12 @@ pub enum Token {
     Para,
     Retorne,
     Identificador(String),
-    Valor(Valor),
+    Valor(Valor<'a>),
     Operador(Operador),
     Fim,
-    FimDoArquivo,
 }
 
-impl Display for Token {
+impl Display for Token<'_> {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         match self {
             Token::Seja => write!(f, "seja"),
@@ -42,7 +44,6 @@ impl Display for Token {
             Token::Valor(val) => write!(f, "valor: {val}"),
             Token::Operador(ope) => write!(f, "operador: {ope}"),
             Token::Fim => write!(f, "fim"),
-            Token::FimDoArquivo => write!(f, "eof"),
         }
     }
 }
@@ -103,15 +104,15 @@ impl Display for Operador {
 }
 
 #[derive(Debug, PartialEq, Clone)]
-pub enum Valor {
+pub enum Valor<'a> {
     Numero(f32),
-    Texto(String),
+    Texto(&'a str),
     Booleano(bool),
-    Vetor(Vec<Valor>),
+    Vetor(&'a [Valor<'a>]),
     Nulo,
 }
 
-impl Display for Valor {
+impl Display for Valor<'_> {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         match self {
             Valor::Numero(..) => write!(f, "numero"),

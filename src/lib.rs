@@ -1,20 +1,11 @@
-mod ast;
-mod error;
 mod lexer;
-mod parser;
 mod token;
+mod interpreter;
 
 use lexer::Lexer;
-use parser::{interpret_code, Environment};
 
 pub fn run_code(file_name: String, code: &str) {
-    let mut lexer = Lexer::new(file_name, &code);
-    let mut env = Environment::new();
 
-    match interpret_code(&mut lexer, &mut env) {
-        Ok(..) => {}
-        Err(err) => eprint!("{err}"),
-    }
 }
 
 #[cfg(test)]
@@ -38,15 +29,9 @@ mod test {
             file.read_to_string(&mut code)
                 .expect("Erro ao ler o arquivo");
 
-            let mut lexer = Lexer::new(String::from(file_str), &code);
-            let mut env = Environment::new();
-            let output = Cursor::new(Vec::new());
+            let mut lexer = Lexer::new(&code);
 
-            env.output = Box::new(output);
-
-            interpret_code(&mut lexer, &mut env)
-                .map_err(|err| eprintln!("{}", err))
-                .expect("Código ser executado normalmente");
+            todo!()
         }
 
         Ok(())

@@ -1,12 +1,9 @@
 use std::char;
 use std::str::Chars;
 
-use crate::error::{Error, Result};
-use crate::token::{Token, Operador, Valor};
-
+use crate::token::{TokenDef, TokenPos, Token, Operador, Valor};
 
 pub struct Lexer<'a> {
-    file_name: String,
     input: Chars<'a>,
     position: usize,
     line_num: usize,
@@ -14,21 +11,41 @@ pub struct Lexer<'a> {
     curr_char: Option<char>,
 }
 
+#[derive(Debug)]
+pub struct LexicalError {
+    row: usize,
+    col: usize,
+    msg: String,
+}
+
+impl std::fmt::Display for LexicalError {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        writeln!(f, "Erro léxico: {}", self.msg);
+        writeln!(f, "Posição -> {}:{}", self.row, self.col)
+    }
+}
+
+type Result<T> = std::result::Result<T, LexicalError>;
+
 impl<'a> Lexer<'a> {
-    pub fn new(file_name: String, code: &str) -> Self {
-        let mut chars = code.chars();
-        Self {
-            file_name,
-            input: chars,
+    pub fn new(input: &'a str) -> Self {
+        let mut new = Self {
+            input: input.chars(),
             position: 0,
             line_num: 0,
             line_start: 0,
-            curr_char: chars.next(),
-        }
+            curr_char: None,
+        };
+        new.next_char();
+        new
+    }
+
+    fn new_error<T>(&self, message: &str) -> Result<T> {
+        Err(LexicalError { row: self.line_num, col: self.position - self.line_start, msg: String::from(message) })
     }
 
     fn next_char(&mut self) {
-        self.curr_char = self.input.next();
+        self.curr_char = self.input.nth(self.position);
         self.position += 1;
     }
 
@@ -100,36 +117,18 @@ impl<'a> Lexer<'a> {
         num_str
     }
 
-    fn consume_string(&mut self) -> Result<String> {
-        let mut value = String::new();
-        let mut state: i8 = 1;
-        self.next_char();
-
-        while let Some(c) = self.curr_char {
-            if c != '"' {
-                value.push(c);
-            } else {
-                state += 1;
-                break;
-            }
-
-            self.next_char();
-        }
-
-        if state != 3 {
-            todo!()
-            //Err(Error::new("", self.))
-        }
-
-        Ok(value)
+    fn consume_string(&'a mut self) -> Result<&'a str> {
+        todo!()
     }
 
-    fn next_token(&mut self) -> Result<Option<Token>> {
+    fn next_token(&'a mut self) -> Result<Option<TokenDef<'a>>> {
         self.consume_whitespace();
 
         let Some(c) = self.curr_char else {
             return Ok(None);
         };
+
+        let position = TokenPos { row: self.line_num, col: self.position - self.line_start };
 
         match c {
             '0'..='9' => {
@@ -137,129 +136,105 @@ impl<'a> Lexer<'a> {
                 let num = self
                     .consume_number()
                     .parse::<f32>()
-                    .map_err(|err| Error::new(&err.to_string(), &self.position))?;
+                    .unwrap();
 
-                Ok(Some(Token::Valor(Valor::Numero(num))))
+                Ok(Some(TokenDef {
+                    kind: Token::Valor(Valor::Numero(num)),
+                    position
+                }))
             }
-            '<' | '>' | '=' | '+' | '-' | '*' | '/' | '%' | '&' | '|' => {
+            '<' | '>' | '=' | '+' | '-' | '*' | '/' | '%' => {
                 self.next_char();
-
-                if let Some(next_c) = self.curr_char {
-                    let operador = match c {
-                        '<' => {
-                            if next_c == '=' {
-                                self.next_char();
-                                Operador::MenorIgualQue
-                            } else {
-                                Operador::MenorQue
-                            }
-                        }
-                        '>' => {
-                            if next_c == '=' {
-                                self.next_char();
-                                Operador::MaiorIgualQue
-                            } else {
-                                Operador::MaiorQue
-                            }
-                        }
-                        '=' => {
-                            if next_c == '=' {
-                                self.next_char();
-                                Operador::Igual
-                            } else {
-                                Operador::Atribuicao
-                            }
-                        }
-                        '+' => {
-                            if next_c == '+' {
-                                self.next_char();
-                                Operador::AutoAdicao
-                            } else if next_c == '=' {
-                                self.next_char();
-                                Operador::SomaAtribuicao
-                            } else {
-                                Operador::Adicao
-                            }
-                        }
-                        '-' => {
-                            if next_c == '-' {
-                                self.next_char();
-                                Operador::AutoSubtracao
-                            } else if next_c == '=' {
-                                self.next_char();
-                                Operador::SubtracaoAtribuicao
-                            } else {
-                                Operador::Subtracao
-                            }
-                        }
-                        '*' => {
-                            if next_c == '=' {
-                                self.next_char();
-                                Operador::MultiplicacaoAtribuicao
-                            } else {
-                                Operador::Multiplicacao
-                            }
-                        }
-                        '/' => {
-                            if next_c == '=' {
-                                self.next_char();
-                                Operador::DivisaoAtribuicao
-                            } else {
-                                Operador::Divisao
-                            }
-                        }
-                        '%' => {
-                            if next_c == '=' {
-                                self.next_char();
-                                Operador::RestoAtribuicao
-                            } else {
-                                Operador::Resto
-                            }
-                        }
-                        '&' => {
-                            if next_c == '&' {
-                                self.next_char();
-                                Operador::CondicionalE
-                            } else {
-                                todo!()
-                            }
-                        }
-                        '|' => {
-                            if next_c == '|' {
-                                self.next_char();
-                                Operador::CondicionalOu
-                            } else {
-                                todo!()
-                            }
-                        }
-                        _ => unreachable!(),
-                    };
-
-                    Ok(Some(Token::Operador(operador)))
+        
+                let operador = match (c, self.curr_char) {
+                    ('<', Some('=')) => {
+                        self.next_char();
+                        Operador::MenorIgualQue
+                    }
+                    ('>', Some('=')) => {
+                        self.next_char();
+                        Operador::MaiorIgualQue
+                    }
+                    ('=', Some('=')) => {
+                        self.next_char();
+                        Operador::Igual
+                    }
+                    ('+', Some('+')) => {
+                        self.next_char();
+                        Operador::AutoAdicao
+                    }
+                    ('+', Some('=')) => {
+                        self.next_char();
+                        Operador::SomaAtribuicao
+                    }
+                    ('-', Some('-')) => {
+                        self.next_char();
+                        Operador::AutoSubtracao
+                    }
+                    ('-', Some('=')) => {
+                        self.next_char();
+                        Operador::SubtracaoAtribuicao
+                    }
+                    ('*', Some('=')) => {
+                        self.next_char();
+                        Operador::MultiplicacaoAtribuicao
+                    }
+                    ('/', Some('=')) => {
+                        self.next_char();
+                        Operador::DivisaoAtribuicao
+                    }
+                    ('%', Some('=')) => {
+                        self.next_char();
+                        Operador::RestoAtribuicao
+                    }
+                    ('<', _) => Operador::MenorQue,
+                    ('>', _) => Operador::MaiorQue,
+                    ('=', _) => Operador::Atribuicao,
+                    ('+', _) => Operador::Adicao,
+                    ('-', _) => Operador::Subtracao,
+                    ('*', _) => Operador::Multiplicacao,
+                    ('/', _) => Operador::Divisao,
+                    ('%', _) => Operador::Resto,
+                    _ => unreachable!()
+                };
+        
+                Ok(Some(TokenDef {
+                    kind: Token::Operador(operador),
+                    position
+                }))
+            }
+            '&' => {
+                if let Some('&') = self.curr_char {
+                    self.next_char();
+                    Ok(Some(TokenDef {
+                        kind: Token::Operador(Operador::CondicionalE),
+                        position
+                    }))
                 } else {
-                    let operador = match c {
-                        '<' => Operador::MenorQue,
-                        '>' => Operador::MaiorQue,
-                        '=' => Operador::Atribuicao,
-                        '+' => Operador::Adicao,
-                        '-' => Operador::Subtracao,
-                        '*' => Operador::Multiplicacao,
-                        '/' => Operador::Divisao,
-                        '%' => Operador::Resto,
-                        '&' => todo!(),
-                        '|' => todo!(),
-                        _ => unreachable!(),
-                    };
-                    Ok(Some(Token::Operador(operador)))
+                    todo!()
                 }
             }
+            '|' => {
+                if let Some('|') = self.curr_char {
+                    self.next_char();
+                    Ok(Some(TokenDef {
+                        kind: Token::Operador(Operador::CondicionalOu),
+                        position
+                    }))
+                } else {
+                    todo!()
+                }
+            }        
             '"' => {
                 let val = self.consume_string()?;
-                Ok(Some(Token::Valor(Valor::Texto(val))))
+                Ok(Some(TokenDef {
+                    kind: Token::Valor(Valor::Texto(val)),
+                    position
+                }))
             }
             'a'..='z' | 'A'..='Z' => {
                 let identifier = self.consume_identifier();
-                let token = match identifier.as_str() {
+                let kind = match identifier.as_str() {
                     "seja" => Token::Seja,
                     "faca" => Token::Faca,
                     "entao" => Token::Entao,
@@ -274,11 +249,18 @@ impl<'a> Lexer<'a> {
                     _ => Token::Identificador(identifier),
                 };
 
-                Ok(Some(token))
+                Ok(Some(TokenDef { kind, position }))
             }
 
-            _ => Err(Error::new("Token inesperado", &self.position)),
+            _ => self.new_error("caracter não esperado"),
         }
     }
 
+    pub fn tokenize(mut self) -> Result<Vec<TokenDef<'a>>> {
+        let mut tokens: Vec<TokenDef<'a>> = Vec::new();
+        while let Some(token) = self.next_token()? {
+            tokens.push(token);
+        }
+        Ok(tokens)
+    }
 }
