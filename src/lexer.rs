@@ -4,7 +4,8 @@ use std::str::Chars;
 use crate::token::{TokenDef, TokenPos, Token, Operador, Valor};
 
 pub struct Lexer<'a> {
-    input: Chars<'a>,
+    input: &'a str,
+    char_iter: Chars<'a>,
     position: usize,
     line_num: usize,
     line_start: usize,
@@ -20,7 +21,7 @@ pub struct LexicalError {
 
 impl std::fmt::Display for LexicalError {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        writeln!(f, "Erro léxico: {}", self.msg);
+        writeln!(f, "Erro léxico: {}", self.msg)?;
         writeln!(f, "Posição -> {}:{}", self.row, self.col)
     }
 }
@@ -30,7 +31,8 @@ type Result<T> = std::result::Result<T, LexicalError>;
 impl<'a> Lexer<'a> {
     pub fn new(input: &'a str) -> Self {
         let mut new = Self {
-            input: input.chars(),
+            input,
+            char_iter: input.chars(),
             position: 0,
             line_num: 0,
             line_start: 0,
@@ -45,23 +47,32 @@ impl<'a> Lexer<'a> {
     }
 
     fn next_char(&mut self) {
-        self.curr_char = self.input.nth(self.position);
+        self.curr_char = self.char_iter.next();
         self.position += 1;
     }
 
     fn consume_whitespace(&mut self) {
         while let Some(c) = self.curr_char {
-            if c.is_whitespace() {
-                self.next_char();
-                if c == '\n' || c == '\r' {
+            if !c.is_whitespace() {
+                break;
+            }
+    
+            self.next_char();
+    
+            match c {
+                '\r' => {
                     if let Some('\n') = self.curr_char {
                         self.next_char();
                     }
+
                     self.line_num += 1;
                     self.line_start = self.position;
                 }
-            } else {
-                break;
+                '\n' => {
+                    self.line_num += 1;
+                    self.line_start = self.position;
+                }
+                _ => {}
             }
         }
     }
@@ -117,11 +128,29 @@ impl<'a> Lexer<'a> {
         num_str
     }
 
-    fn consume_string(&'a mut self) -> Result<&'a str> {
-        todo!()
+    fn consume_string(&mut self) -> Result<&'a str> {
+        let mut state: i8 = 1;
+        self.next_char();
+
+        let start = self.position;
+
+        while let Some(c) = self.curr_char {
+            if c == '"' {
+                state = 2;
+                break;
+            }
+
+            self.next_char();
+        }
+
+        if state != 2 {
+            return self.new_error("aspas (\") finais correspondentes não encontradas");
+        }
+
+        Ok(&self.input[start..=self.position - 1])
     }
 
-    fn next_token(&'a mut self) -> Result<Option<TokenDef<'a>>> {
+    fn next_token(&mut self) -> Result<Option<TokenDef<'a>>> {
         self.consume_whitespace();
 
         let Some(c) = self.curr_char else {
@@ -256,7 +285,7 @@ impl<'a> Lexer<'a> {
         }
     }
 
-    pub fn tokenize(mut self) -> Result<Vec<TokenDef<'a>>> {
+    pub fn tokenize(&mut self) -> Result<Vec<TokenDef<'a>>> {
         let mut tokens: Vec<TokenDef<'a>> = Vec::new();
         while let Some(token) = self.next_token()? {
             tokens.push(token);
