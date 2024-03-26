@@ -12,6 +12,8 @@ pub fn run_code(file_name: String, code: &str) {
 mod test {
     use crate::token::{Operador, Token, Valor};
 
+    use self::interpreter::Scope;
+
     use super::*;
     use std::{
         fs::{self, File},
@@ -21,11 +23,11 @@ mod test {
 
     #[test]
     fn token_are_correctly_readed() {
-        let input = " \
-        seja b = 1 \
-        enquanto b < 10 \
-            b += 1 \
-            imprima b \
+        let input = "\
+        seja foo = 1 \
+        enquanto foo < 10 \
+            foo += 1 \
+            imprima foo \
         fim";
 
         let mut lexer = Lexer::new(input);
@@ -34,30 +36,45 @@ mod test {
             .into_iter()
             .map(|def| def.kind)
             .collect::<Vec<Token<'_>>>();
+        let arr_tokens = tokens.as_slice();
 
         assert_eq!(
-            tokens,
-            vec![
+            arr_tokens,
+            [
                 Token::Seja,
-                Token::Identificador("b".to_string()),
+                Token::Identificador("foo"),
                 Token::Operador(Operador::Atribuicao),
                 Token::Valor(Valor::Numero(1f32)),
 
                 Token::Enquanto,
-                Token::Identificador("b".to_string()),
+                Token::Identificador("foo"),
                 Token::Operador(Operador::MenorQue),
                 Token::Valor(Valor::Numero(10f32)),
 
-                Token::Identificador("b".to_string()),
+                Token::Identificador("foo"),
                 Token::Operador(Operador::SomaAtribuicao),
                 Token::Valor(Valor::Numero(1f32)),
 
                 Token::Imprima,
-                Token::Identificador("b".to_string()),
+                Token::Identificador("foo"),
 
                 Token::Fim
             ]
         );
+    }
+
+    #[test]
+    fn interpreter_runs_fine() {
+        let input = " \
+        seja b = 1
+        enquanto b < 10 \
+            b += 1 \
+            imprima b \
+        fim";
+        let mut lexer = Lexer::new(input);
+        let tokens = lexer.tokenize().unwrap();
+        let mut global = Scope::new(None);
+        interpreter::execute(tokens, &mut global);
     }
 
     #[test]

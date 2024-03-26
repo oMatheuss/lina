@@ -30,16 +30,16 @@ type Result<T> = std::result::Result<T, LexicalError>;
 
 impl<'a> Lexer<'a> {
     pub fn new(input: &'a str) -> Self {
-        let mut new = Self {
+        let mut char_iter = input.chars();
+        let curr_char = char_iter.next();
+        Self {
             input,
-            char_iter: input.chars(),
+            char_iter,
             position: 0,
             line_num: 0,
             line_start: 0,
-            curr_char: None,
-        };
-        new.next_char();
-        new
+            curr_char,
+        }
     }
 
     fn new_error<T>(&self, message: &str) -> Result<T> {
@@ -77,18 +77,16 @@ impl<'a> Lexer<'a> {
         }
     }
 
-    fn consume_identifier(&mut self) -> String {
-        let mut identifier = String::new();
+    fn consume_identifier(&mut self) -> &'a str {
+        let start = self.position;
         while let Some(c) = self.curr_char {
             if c.is_alphanumeric() {
-                identifier.push(c);
+                self.next_char();
             } else {
                 break;
             }
-
-            self.next_char();
         }
-        identifier
+        &self.input[start..self.position]
     }
 
     fn consume_number(&mut self) -> String {
@@ -147,7 +145,7 @@ impl<'a> Lexer<'a> {
             return self.new_error("aspas (\") finais correspondentes não encontradas");
         }
 
-        Ok(&self.input[start..=self.position - 1])
+        Ok(&self.input[start..self.position])
     }
 
     fn next_token(&mut self) -> Result<Option<TokenDef<'a>>> {
@@ -263,7 +261,7 @@ impl<'a> Lexer<'a> {
             }
             'a'..='z' | 'A'..='Z' => {
                 let identifier = self.consume_identifier();
-                let kind = match identifier.as_str() {
+                let kind = match identifier {
                     "seja" => Token::Seja,
                     "faca" => Token::Faca,
                     "entao" => Token::Entao,

@@ -6,12 +6,13 @@ pub struct TokenPos {
     pub row: usize,
 }
 
+#[derive(Debug, Clone)]
 pub struct TokenDef<'a> {
     pub kind: Token<'a>,
     pub position: TokenPos,
 }
 
-#[derive(Debug, PartialEq)]
+#[derive(Debug, PartialEq, Clone)]
 pub enum Token<'a> {
     Seja,
     Faca,
@@ -22,7 +23,7 @@ pub enum Token<'a> {
     Funcao,
     Para,
     Retorne,
-    Identificador(String),
+    Identificador(&'a str),
     Valor(Valor<'a>),
     Operador(Operador),
     Fim,
