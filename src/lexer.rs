@@ -1,7 +1,7 @@
 use std::char;
 use std::str::Chars;
 
-use crate::token::{TokenDef, TokenPos, Token, Operador, Valor};
+use crate::token::{Delimitador, Literal, Operador, Token, TokenDef, TokenPos};
 
 pub struct Lexer<'a> {
     input: &'a str,
@@ -145,7 +145,10 @@ impl<'a> Lexer<'a> {
             return self.new_error("aspas (\") finais correspondentes não encontradas");
         }
 
-        Ok(&self.input[start..self.position])
+        let result = &self.input[start..self.position];
+        self.next_char();
+        
+        Ok(result)
     }
 
     fn next_token(&mut self) -> Result<Option<TokenDef<'a>>> {
@@ -166,7 +169,7 @@ impl<'a> Lexer<'a> {
                     .unwrap();
 
                 Ok(Some(TokenDef {
-                    kind: Token::Valor(Valor::Numero(num)),
+                    kind: Token::Literal(Literal::Numero(num)),
                     position
                 }))
             }
@@ -255,10 +258,16 @@ impl<'a> Lexer<'a> {
             '"' => {
                 let val = self.consume_string()?;
                 Ok(Some(TokenDef {
-                    kind: Token::Valor(Valor::Texto(val)),
+                    kind: Token::Literal(Literal::Texto(val)),
                     position
                 }))
             }
+            '(' => Ok(Some(TokenDef { kind: Token::Delimitador(Delimitador::AParen), position })),
+            ')' => Ok(Some(TokenDef { kind: Token::Delimitador(Delimitador::FParen), position })),
+            '{' => Ok(Some(TokenDef { kind: Token::Delimitador(Delimitador::AChave), position })),
+            '}' => Ok(Some(TokenDef { kind: Token::Delimitador(Delimitador::FChave), position })),
+            '[' => Ok(Some(TokenDef { kind: Token::Delimitador(Delimitador::AColch), position })),
+            ']' => Ok(Some(TokenDef { kind: Token::Delimitador(Delimitador::FColch), position })),
             'a'..='z' | 'A'..='Z' => {
                 let identifier = self.consume_identifier();
                 let kind = match identifier {
@@ -272,7 +281,7 @@ impl<'a> Lexer<'a> {
                     "para" => Token::Para,
                     "retorne" => Token::Retorne,
                     "fim" => Token::Fim,
-                    "nulo" => Token::Valor(Valor::Nulo),
+                    "nulo" => Token::Literal(Literal::Nulo),
                     _ => Token::Identificador(identifier),
                 };
 
@@ -290,4 +299,8 @@ impl<'a> Lexer<'a> {
         }
         Ok(tokens)
     }
+}
+
+pub fn lex(code: &str) -> Result<Vec<TokenDef>> {
+    Lexer::new(code).tokenize()
 }

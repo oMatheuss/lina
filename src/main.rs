@@ -15,5 +15,5 @@ fn main() {
     file.read_to_string(&mut code)
         .expect("Erro ao ler o arquivo");
 
-    run_code(file_name.clone(), &code);
+    run_code(file_name.clone(), &code).expect("programa ser executado");
 }

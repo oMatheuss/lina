@@ -1,6 +1,6 @@
 use std::fmt::Display;
 
-#[derive(Debug, Clone)]
+#[derive(Debug, Clone, Default)]
 pub struct TokenPos {
     pub col: usize,
     pub row: usize,
@@ -24,8 +24,9 @@ pub enum Token<'a> {
     Para,
     Retorne,
     Identificador(&'a str),
-    Valor(Valor<'a>),
+    Literal(Literal<'a>),
     Operador(Operador),
+    Delimitador(Delimitador),
     Fim,
 }
 
@@ -42,8 +43,9 @@ impl Display for Token<'_> {
             Token::Para => write!(f, "para"),
             Token::Retorne => write!(f, "retorne"),
             Token::Identificador(idt) => write!(f, "idetificador: {idt}"),
-            Token::Valor(val) => write!(f, "valor: {val}"),
+            Token::Literal(val) => write!(f, "valor: {val}"),
             Token::Operador(ope) => write!(f, "operador: {ope}"),
+            Token::Delimitador(del) => write!(f, "delimitador: {del}"),
             Token::Fim => write!(f, "fim"),
         }
     }
@@ -105,22 +107,45 @@ impl Display for Operador {
 }
 
 #[derive(Debug, PartialEq, Clone)]
-pub enum Valor<'a> {
+pub enum Literal<'a> {
     Numero(f32),
     Texto(&'a str),
     Booleano(bool),
-    Vetor(&'a [Valor<'a>]),
+    Vetor(&'a [Literal<'a>]),
     Nulo,
 }
 
-impl Display for Valor<'_> {
+impl Display for Literal<'_> {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         match self {
-            Valor::Numero(..) => write!(f, "numero"),
-            Valor::Texto(..) => write!(f, "texto"),
-            Valor::Booleano(..) => write!(f, "booleano"),
-            Valor::Vetor(..) => write!(f, "vetor"),
-            Valor::Nulo => write!(f, "nulo"),
+            Literal::Numero(..) => write!(f, "numero"),
+            Literal::Texto(..) => write!(f, "texto"),
+            Literal::Booleano(..) => write!(f, "booleano"),
+            Literal::Vetor(..) => write!(f, "vetor"),
+            Literal::Nulo => write!(f, "nulo"),
+        }
+    }
+}
+
+#[derive(Debug, PartialEq, Clone)]
+pub enum Delimitador {
+    AParen,
+    FParen,
+    AChave,
+    FChave,
+    AColch,
+    FColch,
+}
+
+impl Display for Delimitador {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        match self {
+            Delimitador::AParen => write!(f, "("),
+            Delimitador::FParen => write!(f, ")"),
+            Delimitador::AChave => write!(f, "{{"),
+            Delimitador::FChave => write!(f, "}}"),
+            Delimitador::AColch => write!(f, "["),
+            Delimitador::FColch => write!(f, "]"),
         }
     }
 }
