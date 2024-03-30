@@ -89,22 +89,25 @@ impl<'a> Lexer<'a> {
         &self.input[start..self.position]
     }
 
-    fn consume_number(&mut self) -> String {
-        let mut num_str = String::new();
-        let mut state: i8 = 1;
+    fn consume_number(&mut self) -> Result<&'a str> {
+        let start = self.position;
+        let mut state: u8 = 1;
 
         while let Some(c) = self.curr_char {
             match state {
                 1 => {
                     if c.is_ascii_digit() {
-                        num_str.push(c);
+                        self.next_char();
+                    } else if c == '.' {
+                        self.next_char();
+                        state = 2;
                     } else {
-                        state += 1;
+                        break;
                     }
                 }
                 2 => {
-                    if c == '.' {
-                        num_str.push(c);
+                    if c.is_ascii_digit() {
+                        self.next_char();
                         state = 3;
                     } else {
                         break;
@@ -112,22 +115,24 @@ impl<'a> Lexer<'a> {
                 }
                 3 => {
                     if c.is_ascii_digit() {
-                        num_str.push(c);
+                        self.next_char();
                     } else {
                         break;
                     }
                 }
-                _ => break,
+                _ => unreachable!(),
             }
-            
-            self.next_char();
         }
 
-        num_str
+        if state == 2 {
+            return self.new_error("esperado número após ponto (.)");
+        }
+
+        Ok(&self.input[start..self.position])
     }
 
     fn consume_string(&mut self) -> Result<&'a str> {
-        let mut state: i8 = 1;
+        let mut state: u8 = 1;
         self.next_char();
 
         let start = self.position;
@@ -164,7 +169,7 @@ impl<'a> Lexer<'a> {
             '0'..='9' => {
                 // match for number literal
                 let num = self
-                    .consume_number()
+                    .consume_number()?
                     .parse::<f32>()
                     .unwrap();
 
@@ -262,12 +267,20 @@ impl<'a> Lexer<'a> {
                     position
                 }))
             }
-            '(' => Ok(Some(TokenDef { kind: Token::Delimitador(Delimitador::AParen), position })),
-            ')' => Ok(Some(TokenDef { kind: Token::Delimitador(Delimitador::FParen), position })),
-            '{' => Ok(Some(TokenDef { kind: Token::Delimitador(Delimitador::AChave), position })),
-            '}' => Ok(Some(TokenDef { kind: Token::Delimitador(Delimitador::FChave), position })),
-            '[' => Ok(Some(TokenDef { kind: Token::Delimitador(Delimitador::AColch), position })),
-            ']' => Ok(Some(TokenDef { kind: Token::Delimitador(Delimitador::FColch), position })),
+            '(' | ')' | '{' | '}' | '[' | ']' => {
+                self.next_char();
+                let del = match c {
+                    '(' => Delimitador::AParen,
+                    ')' => Delimitador::FParen,
+                    '{' => Delimitador::AChave,
+                    '}' => Delimitador::FChave,
+                    '[' => Delimitador::AColch,
+                    ']' => Delimitador::FColch,
+                    _ => unreachable!()
+                };
+
+                Ok(Some(TokenDef { kind: Token::Delimitador(del), position }))
+            }
             'a'..='z' | 'A'..='Z' => {
                 let identifier = self.consume_identifier();
                 let kind = match identifier {
