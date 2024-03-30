@@ -94,7 +94,7 @@ impl<'a> Parser<'a> {
 
     fn parse_program(&mut self) -> Result<SyntaxTree<'a>> {
         let mut program = Vec::new();
-        while let Some(t) = self.peek() {
+        while let Some(..) = self.peek() {
             program.push(self.parse_statement()?);
         }
         Ok(SyntaxTree::Program(program))
