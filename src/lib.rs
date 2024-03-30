@@ -11,6 +11,12 @@ pub fn run_code(file_name: String, code: &str) -> Result<(), ()> {
     println!("file: {}", file_name);
     println!("tokens: {:#?}", tokens);
 
+    let syntax_tree = parser::parse(tokens).map_err(|err| {
+        eprintln!("{}", err);
+    })?;
+    
+    println!("syntax: {:#?}", syntax_tree);
+
     Ok(())
 }
 
@@ -20,7 +26,7 @@ mod test {
 
     #[test]
     fn ast_is_correctly_generated() {
-        let input = "seja a = 10 + 10";
+        let input = "seja a = 10 * 4 + 10 * 3";
         let tokens = lexer::lex(input).expect("semantica correta");
         let ast = parser::parse(tokens).expect("sintaxe correta");
 
