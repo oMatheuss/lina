@@ -26,8 +26,15 @@ mod test {
 
     #[test]
     fn ast_is_correctly_generated() {
-        let input = "seja a = 10 * 4 + 10 * 3";
+        let input = "\
+        seja a = 10 * 4 + 10 * 3 \
+        enquanto a > 10 faca \
+            a -= 2 * a \
+            imprima a \
+        fim";
         let tokens = lexer::lex(input).expect("semantica correta");
+        println!("{:#?}", tokens);
+
         let ast = parser::parse(tokens).expect("sintaxe correta");
 
         println!("{:#?}", ast);
@@ -35,9 +42,9 @@ mod test {
 
     #[test]
     fn token_are_correctly_readed() {
-        let input = "\
+        let input = " \
         seja foo = 1 \
-        enquanto foo < 10 \
+        enquanto foo < 10 faca \
             foo += 1 \
             imprima foo \
         fim";
@@ -62,6 +69,7 @@ mod test {
                 Token::Identificador("foo"),
                 Token::Operador(Operador::MenorQue),
                 Token::Literal(Literal::Numero(10f32)),
+                Token::Faca,
 
                 Token::Identificador("foo"),
                 Token::Operador(Operador::SomaAtribuicao),

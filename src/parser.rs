@@ -3,7 +3,7 @@ use std::mem;
 use std::vec::IntoIter;
 
 use crate::token::{Delimitador, Literal, Operador, Token, TokenDef, TokenPos};
-use crate::syntax::{Expression, Statement, SyntaxTree};
+use crate::syntax::{Block, Expression, SyntaxTree};
 
 #[derive(Debug)]
 pub struct SyntaxError {
@@ -25,10 +25,10 @@ struct OpInfo(u8, OpAssoc);
 
 fn operator_precedence(operator: &Operador) -> OpInfo {
     match operator {
-        Operador::Adicao => OpInfo(1, OpAssoc::L),
-        Operador::Subtracao => OpInfo(1, OpAssoc::L),
-        Operador::Multiplicacao => OpInfo(2, OpAssoc::L),
-        Operador::Divisao => OpInfo(2, OpAssoc::L),
+        Operador::Adicao | Operador::Subtracao => OpInfo(1, OpAssoc::L),
+        Operador::Multiplicacao | Operador::Divisao => OpInfo(2, OpAssoc::L),
+        Operador::MenorQue | Operador::MaiorQue => OpInfo(3, OpAssoc::L),
+        Operador::Igual => OpInfo(4, OpAssoc::L),
         _ => unimplemented!()
     }
 }
@@ -100,6 +100,16 @@ impl<'a> Parser<'a> {
         Ok(SyntaxTree::Program(program))
     }
 
+    fn parse_block(&mut self) -> Result<Block<'a>> {
+        let mut block = Vec::new();
+        while let Some(token) = self.peek() {
+            if token.kind == Token::Fim {break;}
+            block.push(self.parse_statement()?);
+        }
+        self.consume_invariant(Token::Fim)?;
+        Ok(block)
+    }
+
     fn parse_statement(&mut self) -> Result<SyntaxTree<'a>> {
         let token_ref = self.peek().unwrap();
         let position = token_ref.position.clone();
@@ -110,21 +120,54 @@ impl<'a> Parser<'a> {
                 let ident = self.consume_identifier()?;
                 self.consume_invariant(Token::Operador(Operador::Atribuicao))?;
                 let exprs = self.parse_expression(1)?;
-                Statement::Assignment { ident, exprs }
+                SyntaxTree::Assign { ident, exprs }
             },
-            Token::Faca => todo!(),
-            Token::Imprima => todo!(),
-            Token::Enquanto => todo!(),
-            Token::Se => todo!(),
+            Token::Imprima => {
+                self.consume_invariant(Token::Imprima)?;
+                let expr = self.parse_expression(1)?;
+                SyntaxTree::Imprima { expr }
+            },
+            Token::Enquanto => {
+                self.consume_invariant(Token::Enquanto)?;
+                let expr = self.parse_expression(1)?;
+                self.consume_invariant(Token::Faca)?;
+                let block = self.parse_block()?;
+                SyntaxTree::EnquantoStmt { expr, block }
+            },
+            Token::Se => {
+                self.consume_invariant(Token::Se)?;
+                let expr = self.parse_expression(1)?;
+                self.consume_invariant(Token::Entao)?;
+                let block = self.parse_block()?;
+                SyntaxTree::SeStmt { expr, block }
+            },
             Token::Funcao => todo!(),
-            Token::Para => todo!(),
+            Token::Para => {
+                self.consume_invariant(Token::Para)?;
+                let ident = self.consume_identifier()?;
+                todo!()
+            },
             Token::Retorne => todo!(),
-            Token::Identificador(_) => todo!(),
-            Token::Literal(_) => todo!(),
+            Token::Identificador(..) => {
+                let ident = self.consume_identifier()?;
+
+                let ope = self.consume_operator()?;
+                let allowed = ope == Operador::Atribuicao
+                    || ope == Operador::SubtracaoAtribuicao
+                    || ope == Operador::SomaAtribuicao
+                    || ope == Operador::MultiplicacaoAtribuicao
+                    || ope == Operador::DivisaoAtribuicao;
+                
+                if !allowed {
+                    self.new_error("operador não permitido nessa posição", position)?;
+                }
+
+                todo!()
+            },
             _ => self.new_error("token inesperado", position)?
         };
 
-        Ok(SyntaxTree::Statement(statement))
+        Ok(statement)
     }
 
     fn parse_atom(&mut self) -> Result<Expression<'a>> {
