@@ -1,5 +1,5 @@
 [package]
-name = "mat-lang"
+name = "lino"
 version = "0.0.1"
 edition = "2021"
-authors = ["matheus <https://github.com/oMatheuss>"]
+authors = ["matheus <https://github.com/oMatheuss>", "rodrigo"]

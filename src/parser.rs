@@ -120,7 +120,7 @@ impl<'a> Parser<'a> {
                 let ident = self.consume_identifier()?;
                 self.consume_invariant(Token::Operador(Operador::Atribuicao))?;
                 let exprs = self.parse_expression(1)?;
-                SyntaxTree::Assign { ident, exprs }
+                SyntaxTree::Assign { ident, ope: Operador::Atribuicao, exprs }
             },
             Token::Imprima => {
                 self.consume_invariant(Token::Imprima)?;
@@ -162,7 +162,9 @@ impl<'a> Parser<'a> {
                     self.new_error("operador não permitido nessa posição", position)?;
                 }
 
-                todo!()
+                let exprs = self.parse_expression(1)?;
+
+                SyntaxTree::Assign { ident, ope, exprs }
             },
             _ => self.new_error("token inesperado", position)?
         };

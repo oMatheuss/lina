@@ -1,8 +1,8 @@
-# MAT Programming Language
+# Lino
 
-Esse repositório contem o código fonte para a linguagem de programação Mat 😎.
+Esse repositório contem o código fonte para a linguagem de programação Lino 😎.
 
-Mat é uma linguagem interpretada desenvolvida em rust.
+Lino é uma linguagem interpretada desenvolvida em rust.
 
 Exemplos podem ser encontrados na pasta [examples](./examples/).
 
@@ -17,11 +17,5 @@ cargo build
 Em seguida execute o seu codigo usando o interpretador:
 
 ```console
-target\debug\mat-lang.exe examples\enquanto.mat
+target\debug\lino.exe examples\enquanto.lino
 ```
-
-## Desenvolvimento
-
-Mat ainda está em desenvolvimento e ainda precisa que muitas funcionalidades sejam implementadas.
-
-Por enquanto somente declaração de variaveis inteiras e loops enquanto funcionam.

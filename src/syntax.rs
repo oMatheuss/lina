@@ -7,6 +7,7 @@ pub enum SyntaxTree<'a> {
     Program(Block<'a>),
     Assign {
         ident: &'a str,
+        ope: Operador,
         exprs: Expression<'a>,
     },
     SeStmt {
