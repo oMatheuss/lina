@@ -178,7 +178,7 @@ impl<'a> Lexer<'a> {
                     position
                 }))
             }
-            '<' | '>' | '=' | '+' | '-' | '*' | '/' | '%' => {
+            '<' | '>' | '=' | '+' | '-' | '*' | '/' | '%' | '^' | ':' => {
                 self.next_char();
         
                 let operador = match (c, self.curr_char) {
@@ -190,46 +190,44 @@ impl<'a> Lexer<'a> {
                         self.next_char();
                         Operador::MaiorIgualQue
                     }
-                    ('=', Some('=')) => {
+                    ('<', Some('>')) => {
                         self.next_char();
-                        Operador::Igual
-                    }
-                    ('+', Some('+')) => {
-                        self.next_char();
-                        Operador::AutoAdicao
+                        Operador::Diferente
                     }
                     ('+', Some('=')) => {
                         self.next_char();
-                        Operador::SomaAtribuicao
-                    }
-                    ('-', Some('-')) => {
-                        self.next_char();
-                        Operador::AutoSubtracao
+                        Operador::AdicAtrib
                     }
                     ('-', Some('=')) => {
                         self.next_char();
-                        Operador::SubtracaoAtribuicao
+                        Operador::SubtAtrib
                     }
                     ('*', Some('=')) => {
                         self.next_char();
-                        Operador::MultiplicacaoAtribuicao
+                        Operador::MultAtrib
                     }
                     ('/', Some('=')) => {
                         self.next_char();
-                        Operador::DivisaoAtribuicao
+                        Operador::DivAtrib
                     }
                     ('%', Some('=')) => {
                         self.next_char();
-                        Operador::RestoAtribuicao
+                        Operador::RestoAtrib
                     }
+                    ('^', Some('=')) => {
+                        self.next_char();
+                        Operador::ExpAtrib
+                    }
+                    ('=', _) => Operador::Igual,
+                    (':', _) => Operador::Atrib,
                     ('<', _) => Operador::MenorQue,
                     ('>', _) => Operador::MaiorQue,
-                    ('=', _) => Operador::Atribuicao,
-                    ('+', _) => Operador::Adicao,
-                    ('-', _) => Operador::Subtracao,
-                    ('*', _) => Operador::Multiplicacao,
-                    ('/', _) => Operador::Divisao,
+                    ('+', _) => Operador::Adic,
+                    ('-', _) => Operador::Subt,
+                    ('*', _) => Operador::Mult,
+                    ('/', _) => Operador::Div,
                     ('%', _) => Operador::Resto,
+                    ('^', _) => Operador::Exp,
                     _ => unreachable!()
                 };
         
@@ -237,29 +235,7 @@ impl<'a> Lexer<'a> {
                     kind: Token::Operador(operador),
                     position
                 }))
-            }
-            '&' => {
-                if let Some('&') = self.curr_char {
-                    self.next_char();
-                    Ok(Some(TokenDef {
-                        kind: Token::Operador(Operador::CondicionalE),
-                        position
-                    }))
-                } else {
-                    todo!()
-                }
-            }
-            '|' => {
-                if let Some('|') = self.curr_char {
-                    self.next_char();
-                    Ok(Some(TokenDef {
-                        kind: Token::Operador(Operador::CondicionalOu),
-                        position
-                    }))
-                } else {
-                    todo!()
-                }
-            }        
+            }      
             '"' => {
                 let val = self.consume_string()?;
                 Ok(Some(TokenDef {
@@ -287,7 +263,6 @@ impl<'a> Lexer<'a> {
                     "seja" => Token::Seja,
                     "faca" => Token::Faca,
                     "entao" => Token::Entao,
-                    "imprima" => Token::Imprima,
                     "enquanto" => Token::Enquanto,
                     "se" => Token::Se,
                     "função" => Token::Funcao,
@@ -295,6 +270,8 @@ impl<'a> Lexer<'a> {
                     "retorne" => Token::Retorne,
                     "fim" => Token::Fim,
                     "nulo" => Token::Literal(Literal::Nulo),
+                    "e" => Token::Operador(Operador::E),
+                    "ou" => Token::Operador(Operador::Ou),
                     _ => Token::Identificador(identifier),
                 };
 

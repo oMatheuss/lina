@@ -2,8 +2,8 @@ use std::iter::Peekable;
 use std::mem;
 use std::vec::IntoIter;
 
-use crate::token::{Delimitador, Literal, Operador, Token, TokenDef, TokenPos};
-use crate::syntax::{Block, Expression, SyntaxTree};
+use crate::token::{Delimitador, Literal, OpAssoc, OpInfo, Operador, Token, TokenDef, TokenPos};
+use crate::syntax::{Block, Expression, Program, SyntaxTree};
 
 #[derive(Debug)]
 pub struct SyntaxError {
@@ -19,19 +19,6 @@ impl std::fmt::Display for SyntaxError {
 }
 
 type Result<T> = std::result::Result<T, SyntaxError>;
-
-enum OpAssoc { R, L }
-struct OpInfo(u8, OpAssoc);
-
-fn operator_precedence(operator: &Operador) -> OpInfo {
-    match operator {
-        Operador::Adicao | Operador::Subtracao => OpInfo(1, OpAssoc::L),
-        Operador::Multiplicacao | Operador::Divisao => OpInfo(2, OpAssoc::L),
-        Operador::MenorQue | Operador::MaiorQue => OpInfo(3, OpAssoc::L),
-        Operador::Igual => OpInfo(4, OpAssoc::L),
-        _ => unimplemented!()
-    }
-}
 
 pub struct Parser<'a> {
     tokens: Peekable<IntoIter<TokenDef<'a>>>
@@ -92,24 +79,6 @@ impl<'a> Parser<'a> {
         }
     }
 
-    fn parse_program(&mut self) -> Result<SyntaxTree<'a>> {
-        let mut program = Vec::new();
-        while let Some(..) = self.peek() {
-            program.push(self.parse_statement()?);
-        }
-        Ok(SyntaxTree::Program(program))
-    }
-
-    fn parse_block(&mut self) -> Result<Block<'a>> {
-        let mut block = Vec::new();
-        while let Some(token) = self.peek() {
-            if token.kind == Token::Fim {break;}
-            block.push(self.parse_statement()?);
-        }
-        self.consume_invariant(Token::Fim)?;
-        Ok(block)
-    }
-
     fn parse_statement(&mut self) -> Result<SyntaxTree<'a>> {
         let token_ref = self.peek().unwrap();
         let position = token_ref.position.clone();
@@ -118,14 +87,13 @@ impl<'a> Parser<'a> {
             Token::Seja => {
                 self.consume_invariant(Token::Seja)?;
                 let ident = self.consume_identifier()?;
-                self.consume_invariant(Token::Operador(Operador::Atribuicao))?;
-                let exprs = self.parse_expression(1)?;
-                SyntaxTree::Assign { ident, ope: Operador::Atribuicao, exprs }
-            },
-            Token::Imprima => {
-                self.consume_invariant(Token::Imprima)?;
-                let expr = self.parse_expression(1)?;
-                SyntaxTree::Imprima { expr }
+                if let Some(TokenDef { kind: Token::Operador(Operador::Atrib), position: _ }) = self.peek() {
+                    self.consume_invariant(Token::Operador(Operador::Atrib))?;
+                    let exprs = self.parse_expression(1)?;
+                    SyntaxTree::Assign { ident, ope: Operador::Atrib, exprs }
+                } else {
+                    SyntaxTree::Assign { ident, ope: Operador::Atrib, exprs: Expression::Literal(Literal::Nulo) }
+                }
             },
             Token::Enquanto => {
                 self.consume_invariant(Token::Enquanto)?;
@@ -152,11 +120,11 @@ impl<'a> Parser<'a> {
                 let ident = self.consume_identifier()?;
 
                 let ope = self.consume_operator()?;
-                let allowed = ope == Operador::Atribuicao
-                    || ope == Operador::SubtracaoAtribuicao
-                    || ope == Operador::SomaAtribuicao
-                    || ope == Operador::MultiplicacaoAtribuicao
-                    || ope == Operador::DivisaoAtribuicao;
+                let allowed = ope == Operador::Atrib
+                    || ope == Operador::SubtAtrib
+                    || ope == Operador::AdicAtrib
+                    || ope == Operador::MultAtrib
+                    || ope == Operador::DivAtrib;
                 
                 if !allowed {
                     self.new_error("operador não permitido nessa posição", position)?;
@@ -193,7 +161,7 @@ impl<'a> Parser<'a> {
         loop {
             let Some(TokenDef { kind, position: _ }) = self.peek() else { break; };
             let Token::Operador(ope) = kind else { break; };
-            let OpInfo(prec, assoc) = operator_precedence(ope);
+            let OpInfo(prec, assoc) = ope.precedence();
 
             if prec < min_prec { break; }
 
@@ -208,11 +176,29 @@ impl<'a> Parser<'a> {
         Ok(lhs)
     }
 
-    pub fn parse(&mut self) -> Result<SyntaxTree<'a>> {
+    fn parse_block(&mut self) -> Result<Block<'a>> {
+        let mut block = Block::new();
+        while let Some(token) = self.peek() {
+            if token.kind == Token::Fim {break;}
+            block.push(self.parse_statement()?);
+        }
+        self.consume_invariant(Token::Fim)?;
+        Ok(block)
+    }
+
+    fn parse_program(&mut self) -> Result<Program<'a>> {
+        let mut block = Block::new();
+        while let Some(..) = self.peek() {
+            block.push(self.parse_statement()?);
+        }
+        Ok(Program { name: "teste", block })
+    }
+
+    pub fn parse(&mut self) -> Result<Program<'a>> {
         self.parse_program()
     }
 }
 
-pub fn parse(tokens: Vec<TokenDef>) -> Result<SyntaxTree> {
+pub fn parse(tokens: Vec<TokenDef>) -> Result<Program> {
     Parser::new(tokens).parse()
 }

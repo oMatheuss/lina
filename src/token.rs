@@ -17,7 +17,6 @@ pub enum Token<'a> {
     Seja,
     Faca,
     Entao,
-    Imprima,
     Enquanto,
     Se,
     Funcao,
@@ -36,7 +35,6 @@ impl Display for Token<'_> {
             Token::Seja => write!(f, "seja"),
             Token::Faca => write!(f, "faça"),
             Token::Entao => write!(f, "então"),
-            Token::Imprima => write!(f, "imprima"),
             Token::Enquanto => write!(f, "enquanto"),
             Token::Se => write!(f, "se"),
             Token::Funcao => write!(f, "função"),
@@ -53,28 +51,62 @@ impl Display for Token<'_> {
 
 #[derive(Debug, PartialEq, Clone)]
 pub enum Operador {
+    // Operadores Booleanos
     MaiorQue,
     MenorQue,
     MaiorIgualQue,
     MenorIgualQue,
     Igual,
-    CondicionalE,
-    CondicionalOu,
+    Diferente,
+    E,
+    Ou,
 
-    Atribuicao,
-    Adicao,
-    Subtracao,
-    Multiplicacao,
-    Divisao,
+    // Operadores Aritméticos
+    Adic,
+    Subt,
+    Mult,
+    Div,
     Resto,
+    Exp,
+    
+    // Atribuições
+    Atrib,
+    AdicAtrib,
+    SubtAtrib,
+    MultAtrib,
+    DivAtrib,
+    RestoAtrib,
+    ExpAtrib,
+}
 
-    SomaAtribuicao,
-    SubtracaoAtribuicao,
-    MultiplicacaoAtribuicao,
-    DivisaoAtribuicao,
-    RestoAtribuicao,
-    AutoAdicao,
-    AutoSubtracao,
+pub enum OpAssoc { R, L }
+pub struct OpInfo(pub u8, pub OpAssoc);
+
+impl Operador {
+    pub fn precedence(&self) -> OpInfo {
+        match self {
+            Operador::Exp => OpInfo(8, OpAssoc::R),
+            Operador::Mult | Operador::Div | Operador::Resto => OpInfo(7, OpAssoc::L),
+            Operador::Adic | Operador::Subt => OpInfo(6, OpAssoc::L),
+    
+            Operador::MenorQue
+                | Operador::MaiorQue
+                | Operador::MenorIgualQue
+                | Operador::MaiorIgualQue => OpInfo(5, OpAssoc::L),
+    
+            Operador::Igual | Operador::Diferente => OpInfo(4, OpAssoc::L),
+            Operador::E => OpInfo(3, OpAssoc::L),
+            Operador::Ou => OpInfo(2, OpAssoc::L),
+    
+            Operador::Atrib
+                | Operador::AdicAtrib
+                | Operador::SubtAtrib
+                | Operador::MultAtrib
+                | Operador::DivAtrib
+                | Operador::RestoAtrib
+                | Operador::ExpAtrib => OpInfo(1, OpAssoc::L),
+        }
+    }
 }
 
 impl Display for Operador {
@@ -84,24 +116,25 @@ impl Display for Operador {
             Operador::MenorQue => write!(f, "<"),
             Operador::MaiorIgualQue => write!(f, ">="),
             Operador::MenorIgualQue => write!(f, "<="),
-            Operador::Igual => write!(f, "=="),
-            Operador::CondicionalE => write!(f, "&&"),
-            Operador::CondicionalOu => write!(f, "||"),
+            Operador::Igual => write!(f, "="),
+            Operador::Diferente => write!(f, "<>"),
+            Operador::E => write!(f, "e"),
+            Operador::Ou => write!(f, "ou"),
 
-            Operador::Atribuicao => write!(f, "="),
-            Operador::Adicao => write!(f, "+"),
-            Operador::Subtracao => write!(f, "-"),
-            Operador::Multiplicacao => write!(f, "*"),
-            Operador::Divisao => write!(f, "/"),
+            Operador::Adic => write!(f, "+"),
+            Operador::Subt => write!(f, "-"),
+            Operador::Mult => write!(f, "*"),
+            Operador::Div => write!(f, "/"),
             Operador::Resto => write!(f, "%"),
-
-            Operador::SomaAtribuicao => write!(f, "+="),
-            Operador::SubtracaoAtribuicao => write!(f, "-="),
-            Operador::MultiplicacaoAtribuicao => write!(f, "*="),
-            Operador::DivisaoAtribuicao => write!(f, "/="),
-            Operador::RestoAtribuicao => write!(f, "%="),
-            Operador::AutoAdicao => write!(f, "++"),
-            Operador::AutoSubtracao => write!(f, "--"),
+            Operador::Exp => write!(f, "^"),
+            
+            Operador::Atrib => write!(f, ":"),
+            Operador::AdicAtrib => write!(f, "+="),
+            Operador::SubtAtrib => write!(f, "-="),
+            Operador::MultAtrib => write!(f, "*="),
+            Operador::DivAtrib => write!(f, "/="),
+            Operador::RestoAtrib => write!(f, "%="),
+            Operador::ExpAtrib => write!(f, "^="),
         }
     }
 }
@@ -118,10 +151,16 @@ pub enum Literal<'a> {
 impl Display for Literal<'_> {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         match self {
-            Literal::Numero(..) => write!(f, "numero"),
-            Literal::Texto(..) => write!(f, "texto"),
-            Literal::Booleano(..) => write!(f, "booleano"),
-            Literal::Vetor(..) => write!(f, "vetor"),
+            Literal::Numero(number) => write!(f, "{}", number),
+            Literal::Texto(string) => write!(f, "{}", string),
+            Literal::Booleano(boolean) => write!(f, "{}", boolean),
+            Literal::Vetor(v) => {
+                write!(f, "[ ")?;
+                for item in v.into_iter() {
+                    write!(f, " {item}, ")?;
+                }
+                write!(f, " ]")
+            },
             Literal::Nulo => write!(f, "nulo"),
         }
     }
