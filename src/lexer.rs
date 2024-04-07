@@ -43,7 +43,11 @@ impl<'a> Lexer<'a> {
     }
 
     fn new_error<T>(&self, message: &str) -> Result<T> {
-        Err(LexicalError { row: self.line_num, col: self.position - self.line_start, msg: String::from(message) })
+        Err(LexicalError {
+            row: self.line_num,
+            col: self.position - self.line_start,
+            msg: String::from(message),
+        })
     }
 
     fn next_char(&mut self) {
@@ -56,9 +60,9 @@ impl<'a> Lexer<'a> {
             if !c.is_whitespace() {
                 break;
             }
-    
+
             self.next_char();
-    
+
             match c {
                 '\r' => {
                     if let Some('\n') = self.curr_char {
@@ -152,7 +156,7 @@ impl<'a> Lexer<'a> {
 
         let result = &self.input[start..self.position];
         self.next_char();
-        
+
         Ok(result)
     }
 
@@ -163,24 +167,24 @@ impl<'a> Lexer<'a> {
             return Ok(None);
         };
 
-        let position = TokenPos { row: self.line_num, col: self.position - self.line_start };
+        let position = TokenPos {
+            row: self.line_num,
+            col: self.position - self.line_start,
+        };
 
         match c {
             '0'..='9' => {
                 // match for number literal
-                let num = self
-                    .consume_number()?
-                    .parse::<f32>()
-                    .unwrap();
+                let num = self.consume_number()?.parse::<f32>().unwrap();
 
                 Ok(Some(TokenDef {
                     kind: Token::Literal(Literal::Numero(num)),
-                    position
+                    position,
                 }))
             }
             '<' | '>' | '=' | '+' | '-' | '*' | '/' | '%' | '^' | ':' => {
                 self.next_char();
-        
+
                 let operador = match (c, self.curr_char) {
                     ('<', Some('=')) => {
                         self.next_char();
@@ -228,19 +232,19 @@ impl<'a> Lexer<'a> {
                     ('/', _) => Operador::Div,
                     ('%', _) => Operador::Resto,
                     ('^', _) => Operador::Exp,
-                    _ => unreachable!()
+                    _ => unreachable!(),
                 };
-        
+
                 Ok(Some(TokenDef {
                     kind: Token::Operador(operador),
-                    position
+                    position,
                 }))
-            }      
+            }
             '"' => {
                 let val = self.consume_string()?;
                 Ok(Some(TokenDef {
                     kind: Token::Literal(Literal::Texto(val)),
-                    position
+                    position,
                 }))
             }
             '(' | ')' | '{' | '}' | '[' | ']' => {
@@ -252,10 +256,13 @@ impl<'a> Lexer<'a> {
                     '}' => Delimitador::FChave,
                     '[' => Delimitador::AColch,
                     ']' => Delimitador::FColch,
-                    _ => unreachable!()
+                    _ => unreachable!(),
                 };
 
-                Ok(Some(TokenDef { kind: Token::Delimitador(del), position }))
+                Ok(Some(TokenDef {
+                    kind: Token::Delimitador(del),
+                    position,
+                }))
             }
             'a'..='z' | 'A'..='Z' => {
                 let identifier = self.consume_identifier();

@@ -2,8 +2,8 @@ use std::iter::Peekable;
 use std::mem;
 use std::vec::IntoIter;
 
-use crate::token::{Delimitador, Literal, OpAssoc, OpInfo, Operador, Token, TokenDef, TokenPos};
 use crate::syntax::{Block, Expression, Program, SyntaxTree};
+use crate::token::{Delimitador, Literal, OpAssoc, OpInfo, Operador, Token, TokenDef, TokenPos};
 
 #[derive(Debug)]
 pub struct SyntaxError {
@@ -21,12 +21,14 @@ impl std::fmt::Display for SyntaxError {
 type Result<T> = std::result::Result<T, SyntaxError>;
 
 pub struct Parser<'a> {
-    tokens: Peekable<IntoIter<TokenDef<'a>>>
+    tokens: Peekable<IntoIter<TokenDef<'a>>>,
 }
 
 impl<'a> Parser<'a> {
     pub fn new(tokens: Vec<TokenDef<'a>>) -> Self {
-        Parser { tokens: tokens.into_iter().peekable() }
+        Parser {
+            tokens: tokens.into_iter().peekable(),
+        }
     }
 
     fn peek(&mut self) -> Option<&TokenDef<'a>> {
@@ -34,13 +36,17 @@ impl<'a> Parser<'a> {
     }
 
     fn advance(&mut self) -> Result<TokenDef<'a>> {
-        self.tokens.next().ok_or_else(|| {
-            SyntaxError { pos: TokenPos::default(), msg: "fim inesperado do arquivo".into() }
+        self.tokens.next().ok_or_else(|| SyntaxError {
+            pos: TokenPos::default(),
+            msg: "fim inesperado do arquivo".into(),
         })
     }
 
     fn new_error<T>(&self, message: &str, position: TokenPos) -> Result<T> {
-        Err(SyntaxError { pos: position, msg: String::from(message) })
+        Err(SyntaxError {
+            pos: position,
+            msg: String::from(message),
+        })
     }
 
     fn consume_invariant(&mut self, expected: Token<'a>) -> Result<()> {
@@ -48,7 +54,10 @@ impl<'a> Parser<'a> {
         if mem::discriminant(&kind) == mem::discriminant(&expected) {
             Ok(())
         } else {
-            Err(SyntaxError { pos: position, msg: format!("esperado {}, encontrou {}", expected, kind) })
+            Err(SyntaxError {
+                pos: position,
+                msg: format!("esperado {}, encontrou {}", expected, kind),
+            })
         }
     }
 
@@ -57,7 +66,10 @@ impl<'a> Parser<'a> {
         if let Token::Identificador(ident) = kind {
             Ok(ident)
         } else {
-            Err(SyntaxError { pos: position, msg: format!("esperado identificador, encontrou {:?}", kind) })
+            Err(SyntaxError {
+                pos: position,
+                msg: format!("esperado identificador, encontrou {:?}", kind),
+            })
         }
     }
 
@@ -66,7 +78,10 @@ impl<'a> Parser<'a> {
         if let Token::Literal(literal) = kind {
             Ok(literal)
         } else {
-            Err(SyntaxError { pos: position, msg: format!("esperado literal, encontrou {:?}", kind) })
+            Err(SyntaxError {
+                pos: position,
+                msg: format!("esperado literal, encontrou {:?}", kind),
+            })
         }
     }
 
@@ -75,7 +90,10 @@ impl<'a> Parser<'a> {
         if let Token::Operador(operator) = kind {
             Ok(operator)
         } else {
-            Err(SyntaxError { pos: position, msg: format!("esperado operador, encontrou {:?}", kind) })
+            Err(SyntaxError {
+                pos: position,
+                msg: format!("esperado operador, encontrou {:?}", kind),
+            })
         }
     }
 
@@ -87,34 +105,46 @@ impl<'a> Parser<'a> {
             Token::Seja => {
                 self.consume_invariant(Token::Seja)?;
                 let ident = self.consume_identifier()?;
-                if let Some(TokenDef { kind: Token::Operador(Operador::Atrib), position: _ }) = self.peek() {
+                if let Some(TokenDef {
+                    kind: Token::Operador(Operador::Atrib),
+                    position: _,
+                }) = self.peek()
+                {
                     self.consume_invariant(Token::Operador(Operador::Atrib))?;
                     let exprs = self.parse_expression(1)?;
-                    SyntaxTree::Assign { ident, ope: Operador::Atrib, exprs }
+                    SyntaxTree::Assign {
+                        ident,
+                        ope: Operador::Atrib,
+                        exprs,
+                    }
                 } else {
-                    SyntaxTree::Assign { ident, ope: Operador::Atrib, exprs: Expression::Literal(Literal::Nulo) }
+                    SyntaxTree::Assign {
+                        ident,
+                        ope: Operador::Atrib,
+                        exprs: Expression::Literal(Literal::Nulo),
+                    }
                 }
-            },
+            }
             Token::Enquanto => {
                 self.consume_invariant(Token::Enquanto)?;
                 let expr = self.parse_expression(1)?;
                 self.consume_invariant(Token::Faca)?;
                 let block = self.parse_block()?;
                 SyntaxTree::EnquantoStmt { expr, block }
-            },
+            }
             Token::Se => {
                 self.consume_invariant(Token::Se)?;
                 let expr = self.parse_expression(1)?;
                 self.consume_invariant(Token::Entao)?;
                 let block = self.parse_block()?;
                 SyntaxTree::SeStmt { expr, block }
-            },
+            }
             Token::Funcao => todo!(),
             Token::Para => {
                 self.consume_invariant(Token::Para)?;
                 let ident = self.consume_identifier()?;
                 todo!()
-            },
+            }
             Token::Retorne => todo!(),
             Token::Identificador(..) => {
                 let ident = self.consume_identifier()?;
@@ -125,7 +155,7 @@ impl<'a> Parser<'a> {
                     || ope == Operador::AdicAtrib
                     || ope == Operador::MultAtrib
                     || ope == Operador::DivAtrib;
-                
+
                 if !allowed {
                     self.new_error("operador não permitido nessa posição", position)?;
                 }
@@ -133,8 +163,8 @@ impl<'a> Parser<'a> {
                 let exprs = self.parse_expression(1)?;
 
                 SyntaxTree::Assign { ident, ope, exprs }
-            },
-            _ => self.new_error("token inesperado", position)?
+            }
+            _ => self.new_error("token inesperado", position)?,
         };
 
         Ok(statement)
@@ -149,8 +179,8 @@ impl<'a> Parser<'a> {
                 let inner_expr = self.parse_expression(1)?;
                 self.consume_invariant(Token::Delimitador(Delimitador::FParen))?;
                 inner_expr
-            },
-            _ => self.new_error("token inesperado", position)?
+            }
+            _ => self.new_error("token inesperado", position)?,
         };
         Ok(expression)
     }
@@ -159,27 +189,43 @@ impl<'a> Parser<'a> {
         let mut lhs = self.parse_atom()?;
 
         loop {
-            let Some(TokenDef { kind, position: _ }) = self.peek() else { break; };
-            let Token::Operador(ope) = kind else { break; };
+            let Some(TokenDef { kind, position: _ }) = self.peek() else {
+                break;
+            };
+            let Token::Operador(ope) = kind else {
+                break;
+            };
             let OpInfo(prec, assoc) = ope.precedence();
 
-            if prec < min_prec { break; }
+            if prec < min_prec {
+                break;
+            }
 
             let ope = self.consume_operator()?;
-            let min_prec = if let OpAssoc::L = assoc {prec + 1} else {prec};
+            let min_prec = if let OpAssoc::L = assoc {
+                prec + 1
+            } else {
+                prec
+            };
 
             let rhs = self.parse_expression(min_prec)?;
 
-            lhs = Expression::BinOp { ope, lhs: Box::new(lhs), rhs: Box::new(rhs) };
+            lhs = Expression::BinOp {
+                ope,
+                lhs: Box::new(lhs),
+                rhs: Box::new(rhs),
+            };
         }
-        
+
         Ok(lhs)
     }
 
     fn parse_block(&mut self) -> Result<Block<'a>> {
         let mut block = Block::new();
         while let Some(token) = self.peek() {
-            if token.kind == Token::Fim {break;}
+            if token.kind == Token::Fim {
+                break;
+            }
             block.push(self.parse_statement()?);
         }
         self.consume_invariant(Token::Fim)?;
@@ -191,7 +237,10 @@ impl<'a> Parser<'a> {
         while let Some(..) = self.peek() {
             block.push(self.parse_statement()?);
         }
-        Ok(Program { name: "teste", block })
+        Ok(Program {
+            name: "teste",
+            block,
+        })
     }
 
     pub fn parse(&mut self) -> Result<Program<'a>> {

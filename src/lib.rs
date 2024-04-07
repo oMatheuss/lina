@@ -1,7 +1,7 @@
 mod lexer;
-mod token;
 mod parser;
 mod syntax;
+mod token;
 
 pub fn run_code(file_name: String, code: &str) -> Result<(), ()> {
     let tokens = lexer::lex(code).map_err(|err| {
@@ -14,7 +14,7 @@ pub fn run_code(file_name: String, code: &str) -> Result<(), ()> {
     let program = parser::parse(tokens).map_err(|err| {
         eprintln!("{}", err);
     })?;
-    
+
     println!("syntax: {:#?}", program);
 
     Ok(())

@@ -1,11 +1,14 @@
-use std::{fmt::Display, ops::{Deref, DerefMut}};
+use std::{
+    fmt::Display,
+    ops::{Deref, DerefMut},
+};
 
-use crate::token::{Operador, Literal};
+use crate::token::{Literal, Operador};
 
 #[derive(Debug, Clone)]
 pub struct Program<'a> {
     pub name: &'a str,
-    pub block: Block<'a>
+    pub block: Block<'a>,
 }
 
 #[derive(Debug, Clone)]
@@ -17,16 +20,16 @@ pub enum SyntaxTree<'a> {
     },
     SeStmt {
         expr: Expression<'a>,
-        block: Block<'a>
+        block: Block<'a>,
     },
     EnquantoStmt {
         expr: Expression<'a>,
-        block: Block<'a>
+        block: Block<'a>,
     },
     ParaStmt {
         ident: &'a str,
         expr: Expression<'a>,
-        block: Block<'a>
+        block: Block<'a>,
     },
 }
 
@@ -87,22 +90,22 @@ impl<'a> Display for SyntaxTree<'a> {
         match self {
             SyntaxTree::Assign { ident, ope, exprs } => {
                 writeln!(f, "seja {ident} {ope} {exprs}")
-            },
+            }
             SyntaxTree::SeStmt { expr, block } => {
                 writeln!(f, "se {expr} entao")?;
                 write!(f, "{}", block)?;
                 writeln!(f, "fim")
-            },
+            }
             SyntaxTree::EnquantoStmt { expr, block } => {
                 writeln!(f, "enquanto {expr} faca")?;
                 write!(f, "{}", block)?;
                 writeln!(f, "fim")
-            },
+            }
             SyntaxTree::ParaStmt { ident, expr, block } => {
                 writeln!(f, "para {ident}, {expr} faca")?;
                 write!(f, "{}", block)?;
                 writeln!(f, "fim")
-            },
+            }
         }
     }
 }
@@ -115,7 +118,7 @@ impl<'a> Display for Block<'a> {
             .collect::<String>()
             .trim_end()
             .split('\n')
-            .map(|stmt| format!("{:ident$}{stmt}\n", "", ident=4))
+            .map(|stmt| format!("{:ident$}{stmt}\n", "", ident = 4))
             .collect::<String>();
         write!(f, "{}", sub_stmts)
     }
@@ -128,7 +131,7 @@ impl<'a> Display for Expression<'a> {
             Expression::Identifier(identifier) => write!(f, "{}", identifier),
             Expression::BinOp { ope, lhs, rhs } => {
                 write!(f, "({} {} {})", lhs, ope, rhs)
-            },
+            }
         }
     }
 }

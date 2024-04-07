@@ -68,7 +68,7 @@ pub enum Operador {
     Div,
     Resto,
     Exp,
-    
+
     // Atribuições
     Atrib,
     AdicAtrib,
@@ -79,7 +79,10 @@ pub enum Operador {
     ExpAtrib,
 }
 
-pub enum OpAssoc { R, L }
+pub enum OpAssoc {
+    R,
+    L,
+}
 pub struct OpInfo(pub u8, pub OpAssoc);
 
 impl Operador {
@@ -88,23 +91,23 @@ impl Operador {
             Operador::Exp => OpInfo(8, OpAssoc::R),
             Operador::Mult | Operador::Div | Operador::Resto => OpInfo(7, OpAssoc::L),
             Operador::Adic | Operador::Subt => OpInfo(6, OpAssoc::L),
-    
+
             Operador::MenorQue
-                | Operador::MaiorQue
-                | Operador::MenorIgualQue
-                | Operador::MaiorIgualQue => OpInfo(5, OpAssoc::L),
-    
+            | Operador::MaiorQue
+            | Operador::MenorIgualQue
+            | Operador::MaiorIgualQue => OpInfo(5, OpAssoc::L),
+
             Operador::Igual | Operador::Diferente => OpInfo(4, OpAssoc::L),
             Operador::E => OpInfo(3, OpAssoc::L),
             Operador::Ou => OpInfo(2, OpAssoc::L),
-    
+
             Operador::Atrib
-                | Operador::AdicAtrib
-                | Operador::SubtAtrib
-                | Operador::MultAtrib
-                | Operador::DivAtrib
-                | Operador::RestoAtrib
-                | Operador::ExpAtrib => OpInfo(1, OpAssoc::L),
+            | Operador::AdicAtrib
+            | Operador::SubtAtrib
+            | Operador::MultAtrib
+            | Operador::DivAtrib
+            | Operador::RestoAtrib
+            | Operador::ExpAtrib => OpInfo(1, OpAssoc::L),
         }
     }
 }
@@ -127,7 +130,7 @@ impl Display for Operador {
             Operador::Div => write!(f, "/"),
             Operador::Resto => write!(f, "%"),
             Operador::Exp => write!(f, "^"),
-            
+
             Operador::Atrib => write!(f, ":"),
             Operador::AdicAtrib => write!(f, "+="),
             Operador::SubtAtrib => write!(f, "-="),
@@ -160,7 +163,7 @@ impl Display for Literal<'_> {
                     write!(f, " {item}, ")?;
                 }
                 write!(f, " ]")
-            },
+            }
             Literal::Nulo => write!(f, "nulo"),
         }
     }
