@@ -1,3 +1,4 @@
+use std::borrow::Borrow;
 use std::iter::Peekable;
 use std::mem;
 use std::vec::IntoIter;
@@ -114,13 +115,11 @@ impl<'a> Parser<'a> {
                     let exprs = self.parse_expression(1)?;
                     SyntaxTree::Assign {
                         ident,
-                        ope: Operador::Atrib,
                         exprs,
                     }
                 } else {
                     SyntaxTree::Assign {
                         ident,
-                        ope: Operador::Atrib,
                         exprs: Expression::Literal(Literal::Nulo),
                     }
                 }
@@ -128,7 +127,7 @@ impl<'a> Parser<'a> {
             Token::Enquanto => {
                 self.consume_invariant(Token::Enquanto)?;
                 let expr = self.parse_expression(1)?;
-                self.consume_invariant(Token::Faca)?;
+                self.consume_invariant(Token::Repetir)?;
                 let block = self.parse_block()?;
                 SyntaxTree::EnquantoStmt { expr, block }
             }
@@ -146,23 +145,9 @@ impl<'a> Parser<'a> {
                 todo!()
             }
             Token::Retorne => todo!(),
-            Token::Identificador(..) => {
-                let ident = self.consume_identifier()?;
-
-                let ope = self.consume_operator()?;
-                let allowed = ope == Operador::Atrib
-                    || ope == Operador::SubtAtrib
-                    || ope == Operador::AdicAtrib
-                    || ope == Operador::MultAtrib
-                    || ope == Operador::DivAtrib;
-
-                if !allowed {
-                    self.new_error("operador não permitido nessa posição", position)?;
-                }
-
-                let exprs = self.parse_expression(1)?;
-
-                SyntaxTree::Assign { ident, ope, exprs }
+            Token::Identificador(..) | Token::Literal(..) | Token::Delimitador(..) => {
+                let expression = self.parse_expression(1)?;
+                SyntaxTree::Expr(expression)
             }
             _ => self.new_error("token inesperado", position)?,
         };
@@ -185,13 +170,36 @@ impl<'a> Parser<'a> {
         Ok(expression)
     }
 
+    fn is_valid_expression(&self, expr: &Expression, pos: TokenPos) -> Result<()> {
+        match expr {
+            Expression::Literal(_) => Ok(()),
+            Expression::Identifier(_) => Ok(()),
+            Expression::BinOp { ope, lhs, rhs: _ } => {
+                let is_atrib = *ope == Operador::Atrib
+                    || *ope == Operador::SubtAtrib
+                    || *ope == Operador::AdicAtrib
+                    || *ope == Operador::MultAtrib
+                    || *ope == Operador::DivAtrib;
+
+                if is_atrib {
+                    if let Expression::Literal(..) = lhs.borrow() {
+                        self.new_error("lado esquerdo de um operador de atribuição não pode ser um literal", pos)?;
+                    }
+                }
+
+                Ok(())
+            },
+        }
+    }
+
     fn parse_expression(&mut self, min_prec: u8) -> Result<Expression<'a>> {
         let mut lhs = self.parse_atom()?;
 
         loop {
-            let Some(TokenDef { kind, position: _ }) = self.peek() else {
+            let Some(TokenDef { kind, position: op_pos }) = self.peek() else {
                 break;
             };
+            let pos = op_pos.clone();
             let Token::Operador(ope) = kind else {
                 break;
             };
@@ -215,6 +223,8 @@ impl<'a> Parser<'a> {
                 lhs: Box::new(lhs),
                 rhs: Box::new(rhs),
             };
+
+            self.is_valid_expression(&lhs, pos)?;
         }
 
         Ok(lhs)

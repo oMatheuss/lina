@@ -15,9 +15,9 @@ pub struct Program<'a> {
 pub enum SyntaxTree<'a> {
     Assign {
         ident: &'a str,
-        ope: Operador,
         exprs: Expression<'a>,
     },
+    Expr(Expression<'a>),
     SeStmt {
         expr: Expression<'a>,
         block: Block<'a>,
@@ -88,8 +88,8 @@ impl<'a> Display for Program<'a> {
 impl<'a> Display for SyntaxTree<'a> {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         match self {
-            SyntaxTree::Assign { ident, ope, exprs } => {
-                writeln!(f, "seja {ident} {ope} {exprs}")
+            SyntaxTree::Assign { ident, exprs } => {
+                writeln!(f, "seja {ident} := {exprs}")
             }
             SyntaxTree::SeStmt { expr, block } => {
                 writeln!(f, "se {expr} entao")?;
@@ -106,6 +106,9 @@ impl<'a> Display for SyntaxTree<'a> {
                 write!(f, "{}", block)?;
                 writeln!(f, "fim")
             }
+            SyntaxTree::Expr(expr) => {
+                writeln!(f, "{expr}")
+            },
         }
     }
 }

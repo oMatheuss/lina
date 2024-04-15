@@ -3,6 +3,7 @@ mod parser;
 mod syntax;
 mod token;
 mod vm;
+mod compiler;
 
 pub fn run_code(file_name: String, code: &str) -> Result<(), ()> {
     let tokens = lexer::lex(code).map_err(|err| {
@@ -27,16 +28,17 @@ mod test {
 
     #[test]
     fn ast_is_correctly_generated() {
-        let input = "\
-        seja soma: 0 + 1 * 4 * 2 ^ 3 / 5 \
-        enquanto soma < 100 faca \
-            soma: a + entrada / 2 \
-            saida: soma \
-             \
-            se soma = 35 ou soma > 30 e soma < 50entao \
-                soma += 20 \
-            fim \
-        fim";
+        let input = r#"
+        seja soma := 0 + 1 * 4 * 2 ^ 3 / 5
+        seja teste := soma *= soma /= soma -= soma
+        enquanto soma < 100 repetir
+            soma := a + entrada / 2
+            saida := soma
+            
+            se soma = 35 ou soma > 30 e soma < 50 entao
+                soma += 20
+            fim
+        fim"#;
         let tokens = lexer::lex(input).expect("semantica correta");
         println!("{:#?}", tokens);
 

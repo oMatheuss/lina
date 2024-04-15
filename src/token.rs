@@ -15,17 +15,23 @@ pub struct TokenDef<'a> {
 #[derive(Debug, PartialEq, Clone)]
 pub enum Token<'a> {
     Seja,
-    Faca,
-    Entao,
-    Enquanto,
+
     Se,
-    Funcao,
+    Entao,
+
+    Enquanto,
     Para,
+    Ate,
+    Repetir,
+
+    Funcao,
     Retorne,
+
     Identificador(&'a str),
     Literal(Literal<'a>),
     Operador(Operador),
     Delimitador(Delimitador),
+
     Fim,
 }
 
@@ -33,17 +39,23 @@ impl Display for Token<'_> {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         match self {
             Token::Seja => write!(f, "seja"),
-            Token::Faca => write!(f, "faça"),
-            Token::Entao => write!(f, "então"),
-            Token::Enquanto => write!(f, "enquanto"),
+            
             Token::Se => write!(f, "se"),
-            Token::Funcao => write!(f, "função"),
+            Token::Entao => write!(f, "então"),
+
+            Token::Enquanto => write!(f, "enquanto"),
             Token::Para => write!(f, "para"),
+            Token::Ate => write!(f, "ate"),
+            Token::Repetir => write!(f, "repetir"),
+            
+            Token::Funcao => write!(f, "função"),
             Token::Retorne => write!(f, "retorne"),
+
             Token::Identificador(idt) => write!(f, "idetificador: {idt}"),
             Token::Literal(val) => write!(f, "valor: {val}"),
             Token::Operador(ope) => write!(f, "operador: {ope}"),
             Token::Delimitador(del) => write!(f, "delimitador: {del}"),
+
             Token::Fim => write!(f, "fim"),
         }
     }
@@ -107,7 +119,7 @@ impl Operador {
             | Operador::MultAtrib
             | Operador::DivAtrib
             | Operador::RestoAtrib
-            | Operador::ExpAtrib => OpInfo(1, OpAssoc::L),
+            | Operador::ExpAtrib => OpInfo(1, OpAssoc::R),
         }
     }
 }
@@ -131,7 +143,7 @@ impl Display for Operador {
             Operador::Resto => write!(f, "%"),
             Operador::Exp => write!(f, "^"),
 
-            Operador::Atrib => write!(f, ":"),
+            Operador::Atrib => write!(f, ":="),
             Operador::AdicAtrib => write!(f, "+="),
             Operador::SubtAtrib => write!(f, "-="),
             Operador::MultAtrib => write!(f, "*="),

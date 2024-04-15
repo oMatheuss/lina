@@ -198,6 +198,10 @@ impl<'a> Lexer<'a> {
                         self.next_char();
                         Operador::Diferente
                     }
+                    (':', Some('=')) => {
+                        self.next_char();
+                        Operador::Atrib
+                    }
                     ('+', Some('=')) => {
                         self.next_char();
                         Operador::AdicAtrib
@@ -223,7 +227,6 @@ impl<'a> Lexer<'a> {
                         Operador::ExpAtrib
                     }
                     ('=', _) => Operador::Igual,
-                    (':', _) => Operador::Atrib,
                     ('<', _) => Operador::MenorQue,
                     ('>', _) => Operador::MaiorQue,
                     ('+', _) => Operador::Adic,
@@ -232,7 +235,7 @@ impl<'a> Lexer<'a> {
                     ('/', _) => Operador::Div,
                     ('%', _) => Operador::Resto,
                     ('^', _) => Operador::Exp,
-                    _ => unreachable!(),
+                    _ => self.new_error("operador inválido")?,
                 };
 
                 Ok(Some(TokenDef {
@@ -268,7 +271,7 @@ impl<'a> Lexer<'a> {
                 let identifier = self.consume_identifier();
                 let kind = match identifier {
                     "seja" => Token::Seja,
-                    "faca" => Token::Faca,
+                    "repetir" => Token::Repetir,
                     "entao" => Token::Entao,
                     "enquanto" => Token::Enquanto,
                     "se" => Token::Se,
@@ -279,6 +282,7 @@ impl<'a> Lexer<'a> {
                     "nulo" => Token::Literal(Literal::Nulo),
                     "e" => Token::Operador(Operador::E),
                     "ou" => Token::Operador(Operador::Ou),
+                    "ate" => Token::Ate,
                     _ => Token::Identificador(identifier),
                 };
 
