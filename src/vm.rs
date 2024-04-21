@@ -1,3 +1,5 @@
+use std::fmt::Display;
+
 #[repr(u8)]
 #[derive(Debug)]
 pub enum OpCode {
@@ -46,8 +48,7 @@ pub enum LinaValue {
     Number(f32),
     String(String),
     Boolean(bool),
-    Reference(usize),
-    ReturnAddress(usize),
+    Address(usize),
 }
 
 impl LinaValue {
@@ -74,7 +75,7 @@ impl LinaValue {
 
     fn as_address(self) -> usize {
         match self {
-            Self::ReturnAddress(address) => address,
+            Self::Address(address) => address,
             _ => panic!("variavel não é um endereço")
         }
     }
@@ -98,6 +99,17 @@ impl From<bool> for LinaValue {
     }
 }
 
+impl Display for LinaValue {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        match self {
+            LinaValue::Number(value) => writeln!(f, "{value}"),
+            LinaValue::String(value) => writeln!(f, "{value}"),
+            LinaValue::Boolean(value) => writeln!(f, "{value}"),
+            LinaValue::Address(value) => writeln!(f, "{value:#02x}"),
+        }
+    }
+}
+
 macro_rules! binary_op {
     ($x:ident, $op:tt) => {{
         let a = $x.pop().as_number();
@@ -114,7 +126,7 @@ struct Frame {
 
 impl Frame {
     fn new(return_address: usize) -> Self {
-        Self { locals: Vec::new(), stack: vec![LinaValue::ReturnAddress(return_address)] }
+        Self { locals: Vec::new(), stack: vec![LinaValue::Address(return_address)] }
     }
 }
 
@@ -282,7 +294,10 @@ impl<'a> LinaVm<'a> {
                     self.store_global(value, address);
                 },
 
-                OpCode::Write => todo!(),
+                OpCode::Write => {
+                    let value = self.pop();
+                    println!("{value}");
+                },
                 OpCode::Read => todo!(),
             }
         }
