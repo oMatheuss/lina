@@ -103,8 +103,6 @@ macro_rules! binary_op {
         let a = $x.pop().as_number();
         let b = $x.pop().as_number();
         $x.push((b $op a).into());
-
-        print!(" {} {}", b, a);
     }};
 }
 
@@ -198,13 +196,7 @@ impl<'a> LinaVm<'a> {
 
     pub fn run(&mut self) {
         loop {
-            if self.pc >= self.bytecode.len() {
-                break;
-            }
-
             let opcode: OpCode = self.read_byte().into();
-
-            print!("{} OpCode {:?}", self.pc, opcode);
 
             match opcode {
                 OpCode::Halt => break,
@@ -213,8 +205,6 @@ impl<'a> LinaVm<'a> {
                     let index = self.read_address();
                     let constant = &self.constants[index];
                     self.push(constant.clone());
-
-                    print!(" {:?}", constant.clone());
                 },
                 OpCode::Dup => {
                     let top = self.pop();
@@ -240,7 +230,6 @@ impl<'a> LinaVm<'a> {
                 OpCode::Jmp => {
                     let offset = self.read_offset();
                     self.pc = (self.pc as isize + offset) as usize;
-                    print!(" {}", (self.pc as isize + offset));
                 },
                 OpCode::JmpT => {
                     let condition = self.pop();
@@ -255,7 +244,6 @@ impl<'a> LinaVm<'a> {
                     let offset = self.read_offset();
 
                     if !condition.as_bool() {
-                        print!(" {}", (self.pc as isize + offset));
                         self.pc = (self.pc as isize + offset) as usize;
                     }
                 },
@@ -286,21 +274,17 @@ impl<'a> LinaVm<'a> {
                 OpCode::GLoad => {
                     let address = self.read_address();
                     let value = self.read_global(address);
-                    print!(" {:?} {:?}", address, value.clone());
                     self.push(value);
                 },
                 OpCode::GStore => {
                     let value = self.pop();
                     let address = self.read_address();
-                    print!(" {:?} {:?}", address, value.clone());
                     self.store_global(value, address);
                 },
 
                 OpCode::Write => todo!(),
                 OpCode::Read => todo!(),
             }
-
-            println!();
         }
     }
 }
