@@ -1,8 +1,8 @@
-# Lino
+# Lina
 
-Esse repositório contem o código fonte para a linguagem de programação Lino 😎.
+Esse repositório contem o código fonte para a linguagem de programação Lina 😎.
 
-Lino é uma linguagem interpretada desenvolvida em rust.
+Lina é uma linguagem interpretada desenvolvida em rust.
 
 Exemplos podem ser encontrados na pasta [examples](./examples/).
 
@@ -17,5 +17,5 @@ cargo build
 Em seguida execute o seu codigo usando o interpretador:
 
 ```console
-target\debug\lino.exe examples\enquanto.lino
+target\debug\lina.exe examples\enquanto.lina
 ```

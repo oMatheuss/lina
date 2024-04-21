@@ -1,0 +1,9 @@
+seja c := "hello, "
+c += "world"
+
+seja d := 1
+d += 2 + 0.14
+
+saida := "resultado: " + d
+saida := c
+saida := 999.99 + 0.01

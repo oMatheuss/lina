@@ -1,25 +1,35 @@
 #[repr(u8)]
+#[derive(Debug)]
 pub enum OpCode {
     Halt = 0x0,
 
     Const,
+    Dup,
 
     Add,
     Sub,
     Mul,
     Div,
 
-    Jump,
-    JumpIfTrue,
-    JumpIfFalse,
+    Jmp,
+    JmpT,
+    JmpF,
     
-    Equal,
-    NotEqual,
-    LessThan,
-    GreaterThan,
+    Eq,
+    NE,
+    LT,
+    GT,
+    LE,
+    GE,
+
+    Read,
+    Write,
 
     Load,
     Store,
+
+    GLoad,
+    GStore,
 
     Call,
     Return,
@@ -32,13 +42,15 @@ impl From<u8> for OpCode {
 }
 
 #[derive(PartialEq, Clone, Debug)]
-pub enum LinoValue {
+pub enum LinaValue {
     Number(f32),
     String(String),
-    Bool(bool),
+    Boolean(bool),
+    Reference(usize),
+    ReturnAddress(usize),
 }
 
-impl LinoValue {
+impl LinaValue {
     fn as_number(self) -> f32 {
         match self {
             Self::Number(number) => number,
@@ -55,9 +67,34 @@ impl LinoValue {
 
     fn as_bool(self) -> bool {
         match self {
-            Self::Bool(boolean) => boolean,
+            Self::Boolean(boolean) => boolean,
             _ => panic!("variavel não é um booleano")
         }
+    }
+
+    fn as_address(self) -> usize {
+        match self {
+            Self::ReturnAddress(address) => address,
+            _ => panic!("variavel não é um endereço")
+        }
+    }
+}
+
+impl From<f32> for LinaValue {
+    fn from(value: f32) -> Self {
+        LinaValue::Number(value)
+    }
+}
+
+impl From<String> for LinaValue {
+    fn from(value: String) -> Self {
+        LinaValue::String(value)
+    }
+}
+
+impl From<bool> for LinaValue {
+    fn from(value: bool) -> Self {
+        LinaValue::Boolean(value)
     }
 }
 
@@ -65,186 +102,205 @@ macro_rules! binary_op {
     ($x:ident, $op:tt) => {{
         let a = $x.pop().as_number();
         let b = $x.pop().as_number();
-        $x.push(LinoValue::Number(b $op a));
+        $x.push((b $op a).into());
+
+        print!(" {} {}", b, a);
     }};
 }
 
-const STACK_LIMIT: usize = 512;
-const LINO_VALUE_DEFAULT: Option<LinoValue> = None;
-
 #[derive(Debug)]
-pub struct LinoVm<'a> {
-    constants: Vec<LinoValue>,
-    stack: [Option<LinoValue>; STACK_LIMIT],
-    memory: Vec<Option<LinoValue>>,
-    bytecode: &'a [u8],
-    ip: usize, // instruction pointer
-    sp: usize, // stack pointer
+struct Frame {
+    locals: Vec<LinaValue>, // local variables
+    stack: Vec<LinaValue>, // operand stack
 }
 
-impl<'a> LinoVm<'a> {
-    pub fn new(bytecode: &'a [u8], constants: Vec<LinoValue>) -> Self {
+impl Frame {
+    fn new(return_address: usize) -> Self {
+        Self { locals: Vec::new(), stack: vec![LinaValue::ReturnAddress(return_address)] }
+    }
+}
+
+#[derive(Debug)]
+pub struct LinaVm<'a> {
+    bytecode: &'a [u8], // bytecode to be executed
+
+    pc: usize, // program counter
+
+    constants: &'a [LinaValue], // constant pool
+    callstack: Vec<Frame>, // call stack
+
+    globals: Vec<LinaValue>
+}
+
+impl<'a> LinaVm<'a> {
+    pub fn new(bytecode: &'a [u8], constants: &'a [LinaValue]) -> Self {
         Self {
             bytecode,
-            ip: 0,
-            sp: 0,
+            pc: 0,
             constants,
-            stack: [LINO_VALUE_DEFAULT; STACK_LIMIT],
-            memory: Vec::new(),
+            callstack: vec![Frame::new(0)],
+            globals: Vec::new(),
         }
     }
 
-    fn push(&mut self, value: LinoValue) {
-        assert!(self.sp <= STACK_LIMIT, "stack overflow");
-        self.stack[self.sp] = Some(value);
-        self.sp += 1;
+    fn push(&mut self, value: LinaValue) {
+        self.callstack.last_mut()
+            .expect("frame stack should not be empty")
+            .stack.push(value);
     }
 
-    fn pop(&mut self) -> LinoValue {
-        assert!(self.sp > 0, "stack underflow");
-        self.sp -= 1;
-        std::mem::replace(&mut self.stack[self.sp], None).unwrap()
-    }
-
-    fn store(&mut self, address: usize, value: LinoValue) {
-        if self.memory.len() == address {
-            self.memory.push(Some(value));
-        } else if self.memory.len() > address {
-            self.memory[address] = Some(value);
-        } else {
-            panic!("invalid memory acess {address}");
-        }
-    }
-
-    fn load(&mut self, address: usize) -> LinoValue {
-        self.memory[address].as_ref().unwrap().clone()
+    fn pop(&mut self) -> LinaValue {
+        self.callstack.last_mut()
+            .expect("frame stack should not be empty")
+            .stack.pop().expect("stack should not be empty")
     }
 
     fn read_byte(&mut self) -> u8 {
-        let byte = self.bytecode[self.ip];
-        self.ip += 1;
+        assert!(self.pc < self.bytecode.len());
+        let byte = self.bytecode[self.pc];
+        self.pc += 1;
         byte
+    }
+
+    fn read_address(&mut self) -> usize {
+        let bytes = core::array::from_fn(|_i| self.read_byte());
+        usize::from_ne_bytes(bytes)
+    }
+
+    fn read_offset(&mut self) -> isize {
+        let bytes = core::array::from_fn(|_i| self.read_byte());
+        isize::from_ne_bytes(bytes)
+    }
+
+    fn store(&mut self, value: LinaValue, address: usize) {
+        self.callstack.last_mut()
+            .expect("frame stack should not be empty")
+            .locals[address] = value;
+    }
+
+    fn read(&mut self, address: usize) -> LinaValue {
+        self.callstack.last_mut()
+            .expect("frame stack should not be empty")
+            .locals[address].clone()
+    }
+
+    fn store_global(&mut self, value: LinaValue, address: usize) {
+        while self.globals.len() < address + 1 {
+            self.globals.push(LinaValue::Number(0.0));
+        }
+
+        self.globals[address] = value;
+    }
+
+    fn read_global(&mut self, address: usize) -> LinaValue {
+        self.globals[address].clone()
     }
 
     pub fn run(&mut self) {
         loop {
-            let opcode: OpCode = self.bytecode[self.ip].into();
-            self.ip += 1;
-            
+            if self.pc >= self.bytecode.len() {
+                break;
+            }
+
+            let opcode: OpCode = self.read_byte().into();
+
+            print!("{} OpCode {:?}", self.pc, opcode);
+
             match opcode {
-                OpCode::Halt => return,
+                OpCode::Halt => break,
+
                 OpCode::Const => {
-                    let index = self.read_byte();
-                    let constant = &self.constants[index as usize];
+                    let index = self.read_address();
+                    let constant = &self.constants[index];
                     self.push(constant.clone());
+
+                    print!(" {:?}", constant.clone());
                 },
+                OpCode::Dup => {
+                    let top = self.pop();
+                    self.push(top.clone());
+                    self.push(top);
+                },
+
                 OpCode::Add => binary_op!(self, +),
                 OpCode::Sub => binary_op!(self, -),
                 OpCode::Mul => binary_op!(self, *),
                 OpCode::Div => binary_op!(self, /),
 
-                OpCode::Equal => {
-                    let a = self.pop();
-                    let b = self.pop();
-                    self.push(LinoValue::Bool(a == b));
-                },
-                OpCode::NotEqual => {
-                    let a = self.pop();
-                    let b = self.pop();
-                    self.push(LinoValue::Bool(a != b));
-                },
+                OpCode::Eq => binary_op!(self, ==),
+                OpCode::NE => binary_op!(self, !=),
 
-                OpCode::LessThan => {
-                    let a = self.pop().as_number();
-                    let b = self.pop().as_number();
-                    self.push(LinoValue::Bool(b < a));
-                },
-                OpCode::GreaterThan => {
-                    let a = self.pop().as_number();
-                    let b = self.pop().as_number();
-                    self.push(LinoValue::Bool(b > a));
-                },
+                OpCode::LT => binary_op!(self, <),
+                OpCode::GT => binary_op!(self, >),
+
+                OpCode::LE => binary_op!(self, <=),
+                OpCode::GE => binary_op!(self, >=),
 
                 // Controle de fluxo
-                OpCode::Jump => {
-                    let offset = self.read_byte() as i8;
-                    self.ip = (self.ip as isize + offset as isize) as usize;
+                OpCode::Jmp => {
+                    let offset = self.read_offset();
+                    self.pc = (self.pc as isize + offset) as usize;
+                    print!(" {}", (self.pc as isize + offset));
                 },
-                OpCode::JumpIfTrue => {
+                OpCode::JmpT => {
                     let condition = self.pop();
-                    let offset = self.read_byte() as i8;
+                    let offset = self.read_offset();
 
                     if condition.as_bool() {
-                        self.ip = (self.ip as isize + offset as isize) as usize;
+                        self.pc = (self.pc as isize + offset) as usize;
                     }
                 },
-                OpCode::JumpIfFalse => {
+                OpCode::JmpF => {
                     let condition = self.pop();
-                    let offset = self.read_byte() as i8;
+                    let offset = self.read_offset();
 
                     if !condition.as_bool() {
-                        self.ip = (self.ip as isize + offset as isize) as usize;
+                        print!(" {}", (self.pc as isize + offset));
+                        self.pc = (self.pc as isize + offset) as usize;
                     }
                 },
 
                 OpCode::Call => {
-                    let function_address = self.read_byte() as usize;
-                    self.push(LinoValue::Number(self.ip as f32));
-                    self.ip = function_address;
+                    let function_address = self.read_address();
+                    let frame = Frame::new(self.pc);
+                    self.callstack.push(frame);
+                    self.pc = function_address;
                 },
                 OpCode::Return => {
-                    let return_address = self.pop();
-                    self.ip = return_address.as_number() as usize;
+                    let return_address = self.pop().as_address();
+                    self.callstack.pop();
+                    self.pc = return_address;
                 },
 
                 OpCode::Load => {
-                    let address = self.read_byte() as usize;
-                    let value = self.load(address);
+                    let address = self.read_address();
+                    let value = self.read(address);
                     self.push(value);
                 },
                 OpCode::Store => {
-                    let address = self.read_byte() as usize;
                     let value = self.pop();
-                    self.store(address, value);
+                    let address = self.read_address();
+                    self.store(value, address);
                 },
+
+                OpCode::GLoad => {
+                    let address = self.read_address();
+                    let value = self.read_global(address);
+                    print!(" {:?} {:?}", address, value.clone());
+                    self.push(value);
+                },
+                OpCode::GStore => {
+                    let value = self.pop();
+                    let address = self.read_address();
+                    print!(" {:?} {:?}", address, value.clone());
+                    self.store_global(value, address);
+                },
+
+                OpCode::Write => todo!(),
+                OpCode::Read => todo!(),
             }
+
+            println!();
         }
     }
-
-    pub fn debug(&self) {
-        println!("stack: {:?}", self.stack.iter().filter(|v| v.is_some()).collect::<Vec<_>>());
-        println!("memory: {:?}", self.memory);
-    }
-}
-
-#[test]
-fn test() {
-    let constants = vec![
-        LinoValue::Number(15.0),
-        LinoValue::Number(10.0),
-        LinoValue::Number(2.0)
-    ];
-    let bytecode = vec![
-        OpCode::Const as u8, 0x1,   // 10
-        OpCode::Const as u8, 0x0,   // 15
-        OpCode::GreaterThan as u8,  // >
-
-        OpCode::JumpIfFalse as u8, 0x7, // if
-
-        // true part
-        OpCode::Const as u8, 0x0,   // 15
-        OpCode::Const as u8, 0x1,   // 10
-        OpCode::Sub as u8,
-        OpCode::Jump as u8, 0x5,
-        
-        // false part
-        OpCode::Const as u8, 0x0,   // 15 
-        OpCode::Const as u8, 0x1,   // 10
-        OpCode::Add as u8,
-
-        OpCode::Halt as u8,
-    ];
-    let mut vm = LinoVm::new(&bytecode, constants);
-
-    vm.run();
 }

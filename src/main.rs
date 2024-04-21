@@ -2,7 +2,7 @@ use std::env;
 use std::fs::File;
 use std::io::Read;
 
-use lino::run_code;
+use lina::run_code;
 
 fn main() {
     let mut code = String::new();

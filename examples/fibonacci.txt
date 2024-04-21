@@ -1,0 +1,8 @@
+seja x1 := 0
+seja x2 := 1
+
+enquanto x1 < 30000000 repetir
+    seja x3 := x2
+    x2 += x1
+    x1 := x3
+fim

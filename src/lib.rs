@@ -19,6 +19,8 @@ pub fn run_code(file_name: String, code: &str) -> Result<(), ()> {
 
     println!("syntax: {:#?}", program);
 
+    compiler::execute_program(program);
+
     Ok(())
 }
 
