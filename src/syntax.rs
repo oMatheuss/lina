@@ -12,6 +12,15 @@ pub struct Program<'a> {
 }
 
 #[derive(Debug, Clone)]
+pub enum Type {
+    Integer,
+    Real,
+    Text,
+    Boolean,
+    Vector
+}
+
+#[derive(Debug, Clone)]
 pub enum SyntaxTree<'a> {
     Assign {
         ident: &'a str,
@@ -85,6 +94,18 @@ impl<'a> Display for Program<'a> {
     }
 }
 
+impl Display for Type {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        match self {
+            Type::Integer => write!(f, "inteiro"),
+            Type::Real => write!(f, "real"),
+            Type::Text => write!(f, "texto"),
+            Type::Boolean => write!(f, "booleano"),
+            Type::Vector => write!(f, "vetor"),
+        }
+    }
+}
+
 impl<'a> Display for SyntaxTree<'a> {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         match self {
@@ -93,17 +114,17 @@ impl<'a> Display for SyntaxTree<'a> {
             }
             SyntaxTree::SeStmt { expr, block } => {
                 writeln!(f, "se {expr} entao")?;
-                write!(f, "{}", block)?;
+                write!(f, "{block}")?;
                 writeln!(f, "fim")
             }
             SyntaxTree::EnquantoStmt { expr, block } => {
                 writeln!(f, "enquanto {expr} faca")?;
-                write!(f, "{}", block)?;
+                write!(f, "{block}")?;
                 writeln!(f, "fim")
             }
             SyntaxTree::ParaStmt { ident, expr, block } => {
                 writeln!(f, "para {ident}, {expr} faca")?;
-                write!(f, "{}", block)?;
+                write!(f, "{block}")?;
                 writeln!(f, "fim")
             }
             SyntaxTree::Expr(expr) => {

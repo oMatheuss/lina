@@ -166,7 +166,6 @@ impl<'a> Compiler<'a> {
                     Literal::Booleano(boolean) => {
                         self.constants.push(LinaValue::Boolean(boolean));
                     },
-                    Literal::Vetor(_) => todo!(),
                     Literal::Nulo => todo!(),
                 };
 

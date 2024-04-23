@@ -14,7 +14,14 @@ pub struct TokenDef<'a> {
 
 #[derive(Debug, PartialEq, Clone)]
 pub enum Token<'a> {
+    Programa,
+
     Seja,
+
+    Inteiro,
+    Real,
+    Texto,
+    Booleano,
 
     Se,
     Entao,
@@ -38,7 +45,14 @@ pub enum Token<'a> {
 impl Display for Token<'_> {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         match self {
+            Token::Programa => write!(f, "programa"),
+
             Token::Seja => write!(f, "seja"),
+
+            Token::Inteiro => write!(f, ""),
+            Token::Real => write!(f, ""),
+            Token::Texto => write!(f, ""),
+            Token::Booleano => write!(f, ""),
             
             Token::Se => write!(f, "se"),
             Token::Entao => write!(f, "então"),
@@ -159,7 +173,6 @@ pub enum Literal<'a> {
     Numero(f32),
     Texto(&'a str),
     Booleano(bool),
-    Vetor(&'a [Literal<'a>]),
     Nulo,
 }
 
@@ -169,13 +182,6 @@ impl Display for Literal<'_> {
             Literal::Numero(number) => write!(f, "{}", number),
             Literal::Texto(string) => write!(f, "{}", string),
             Literal::Booleano(boolean) => write!(f, "{}", boolean),
-            Literal::Vetor(v) => {
-                write!(f, "[ ")?;
-                for item in v.into_iter() {
-                    write!(f, " {item}, ")?;
-                }
-                write!(f, " ]")
-            }
             Literal::Nulo => write!(f, "nulo"),
         }
     }

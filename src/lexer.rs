@@ -175,7 +175,7 @@ impl<'a> Lexer<'a> {
         match c {
             '0'..='9' => {
                 // match for number literal
-                let num = self.consume_number()?.parse::<f32>().unwrap();
+                let num = self.consume_number()?.parse().unwrap();
 
                 Ok(Some(TokenDef {
                     kind: Token::Literal(Literal::Numero(num)),
@@ -270,7 +270,12 @@ impl<'a> Lexer<'a> {
             'a'..='z' | 'A'..='Z' => {
                 let identifier = self.consume_identifier();
                 let kind = match identifier {
+                    "programa" => Token::Programa,
                     "seja" => Token::Seja,
+                    "inteiro" => Token::Inteiro,
+                    "real" => Token::Real,
+                    "texto" => Token::Texto,
+                    "booleano" => Token::Booleano,
                     "repetir" => Token::Repetir,
                     "entao" => Token::Entao,
                     "enquanto" => Token::Enquanto,
@@ -283,6 +288,8 @@ impl<'a> Lexer<'a> {
                     "e" => Token::Operador(Operador::E),
                     "ou" => Token::Operador(Operador::Ou),
                     "ate" => Token::Ate,
+                    "verdadeiro" => Token::Literal(Literal::Booleano(true)),
+                    "falso" => Token::Literal(Literal::Booleano(false)),
                     _ => Token::Identificador(identifier),
                 };
 
