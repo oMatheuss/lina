@@ -91,7 +91,7 @@ impl<'a> Parser<'a> {
         let position = token_ref.position.clone();
 
         let statement = match token_ref.kind {
-            Token::Seja => {
+            Token::Seja | Token::Inteiro | Token::Real | Token::Texto => {
                 self.consume_invariant(Token::Seja)?;
                 let ident = self.consume_identifier()?;
                 if let Some(TokenDef {
@@ -101,10 +101,7 @@ impl<'a> Parser<'a> {
                 {
                     self.consume_invariant(Token::Operador(Operador::Atrib))?;
                     let exprs = self.parse_expression(1)?;
-                    SyntaxTree::Assign {
-                        ident,
-                        exprs,
-                    }
+                    SyntaxTree::Assign { ident, exprs }
                 } else {
                     SyntaxTree::Assign {
                         ident,
@@ -112,6 +109,12 @@ impl<'a> Parser<'a> {
                     }
                 }
             }
+            Token::Identificador("saida") => {
+                let ident = self.consume_identifier()?;
+                self.consume_invariant(Token::Operador(Operador::Atrib))?;
+                let exprs = self.parse_expression(1)?;
+                SyntaxTree::Assign { ident, exprs }
+            },
             Token::Enquanto => {
                 self.consume_invariant(Token::Enquanto)?;
                 let expr = self.parse_expression(1)?;

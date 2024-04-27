@@ -103,9 +103,17 @@ impl<'a> Compiler<'a> {
     pub fn compile_instruction(&mut self, instr: &'a SyntaxTree) {
         match instr {
             SyntaxTree::Assign { ident, exprs } => {
-                let addr = self.set_var(ident);
-                self.compile_expr(exprs);
-                self.op_global_store(addr);
+                match *ident {
+                    "saida" => {
+                        self.compile_expr(exprs);
+                        self.op(OpCode::Write);
+                    },
+                    _ => {
+                        let addr = self.set_var(ident);
+                        self.compile_expr(exprs);
+                        self.op_global_store(addr);
+                    }
+                }
             },
             SyntaxTree::SeStmt { expr, block } => {
                 self.compile_expr(expr);
@@ -239,10 +247,13 @@ fn test() {
     let code = r#"
     seja x := 0
     seja y := 1
-    enquanto x < 10000 repetir
+    saida := "Calculo de Fibonacci!"
+    saida := x
+    enquanto x < 10000000 repetir
         seja z := x + y
         x := y
         y := z
+        saida := x
     fim
     "#;
 
