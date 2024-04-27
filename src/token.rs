@@ -15,25 +15,19 @@ pub struct TokenDef<'a> {
 #[derive(Debug, PartialEq, Clone)]
 pub enum Token<'a> {
     Programa,
-
     Seja,
-
     Inteiro,
     Real,
     Texto,
     Booleano,
-
     Se,
     Entao,
-
     Enquanto,
     Para,
     Ate,
     Repetir,
-
     Funcao,
     Retorne,
-
     Identificador(&'a str),
     Literal(Literal<'a>),
     Operador(Operador),

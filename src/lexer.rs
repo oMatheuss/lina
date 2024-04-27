@@ -57,6 +57,13 @@ impl<'a> Lexer<'a> {
         }
     }
 
+    fn get_pos(&self) -> TokenPos {
+        TokenPos {
+            row: self.line_num,
+            col: self.position - self.line_start,
+        }
+    }
+
     fn consume_whitespace(&mut self) {
         while let Some(c) = self.curr_char {
             if !c.is_whitespace() {
@@ -169,10 +176,7 @@ impl<'a> Lexer<'a> {
             return Ok(None);
         };
 
-        let position = TokenPos {
-            row: self.line_num,
-            col: self.position - self.line_start,
-        };
+        let position = self.get_pos();
 
         match c {
             '0'..='9' => {
