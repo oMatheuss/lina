@@ -102,10 +102,10 @@ impl From<bool> for LinaValue {
 impl Display for LinaValue {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         match self {
-            LinaValue::Number(value) => writeln!(f, "{value}"),
-            LinaValue::String(value) => writeln!(f, "{value}"),
-            LinaValue::Boolean(value) => writeln!(f, "{value}"),
-            LinaValue::Address(value) => writeln!(f, "{value:#02x}"),
+            LinaValue::Number(value) => write!(f, "{value}"),
+            LinaValue::String(value) => write!(f, "{value}"),
+            LinaValue::Boolean(value) => write!(f, "{value}"),
+            LinaValue::Address(value) => write!(f, "{value:#02x}"),
         }
     }
 }
@@ -196,7 +196,7 @@ impl<'a> LinaVm<'a> {
 
     fn store_global(&mut self, value: LinaValue, address: usize) {
         while self.globals.len() < address + 1 {
-            self.globals.push(LinaValue::Number(0.0));
+            self.globals.push(0.0.into());
         }
 
         self.globals[address] = value;
