@@ -52,7 +52,9 @@ impl<'a> Lexer<'a> {
 
     fn next_char(&mut self) {
         self.curr_char = self.char_iter.next();
-        self.position += 1;
+        if let Some (ch) = self.curr_char {
+            self.position += ch.len_utf8();
+        }
     }
 
     fn consume_whitespace(&mut self) {
