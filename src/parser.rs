@@ -74,18 +74,6 @@ impl<'a> Parser<'a> {
         }
     }
 
-    fn consume_literal(&mut self) -> Result<Literal<'a>> {
-        let TokenDef { kind, position } = self.advance()?;
-        if let Token::Literal(literal) = kind {
-            Ok(literal)
-        } else {
-            Err(SyntaxError {
-                pos: position,
-                msg: format!("esperado literal, encontrou {:?}", kind),
-            })
-        }
-    }
-
     fn consume_operator(&mut self) -> Result<Operador> {
         let TokenDef { kind, position } = self.advance()?;
         if let Token::Operador(operator) = kind {
@@ -142,7 +130,11 @@ impl<'a> Parser<'a> {
             Token::Para => {
                 self.consume_invariant(Token::Para)?;
                 let ident = self.consume_identifier()?;
-                todo!()
+                self.consume_invariant(Token::Ate)?;
+                let expr = self.parse_expression(1)?;
+                self.consume_invariant(Token::Repetir)?;
+                let block = self.parse_block()?;
+                SyntaxTree::ParaStmt { ident, expr, block }
             }
             Token::Retorne => todo!(),
             Token::Identificador(..) | Token::Literal(..) | Token::Delimitador(..) => {
