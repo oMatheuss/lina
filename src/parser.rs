@@ -165,28 +165,6 @@ impl<'a> Parser<'a> {
         Ok(expression)
     }
 
-    fn is_valid_expression(&self, expr: &Expression, pos: TokenPos) -> Result<()> {
-        match expr {
-            Expression::Literal(_) => Ok(()),
-            Expression::Identifier(_) => Ok(()),
-            Expression::BinOp { ope, lhs, rhs: _ } => {
-                let is_atrib = *ope == Operador::Atrib
-                    || *ope == Operador::SubtAtrib
-                    || *ope == Operador::AdicAtrib
-                    || *ope == Operador::MultAtrib
-                    || *ope == Operador::DivAtrib;
-
-                if is_atrib {
-                    if let Expression::Literal(..) = lhs.borrow() {
-                        self.new_error("lado esquerdo de um operador de atribuição não pode ser um literal", pos)?;
-                    }
-                }
-
-                Ok(())
-            },
-        }
-    }
-
     fn parse_expression(&mut self, min_prec: u8) -> Result<Expression<'a>> {
         let mut lhs = self.parse_atom()?;
 
@@ -211,6 +189,12 @@ impl<'a> Parser<'a> {
                 prec
             };
 
+            if ope.is_atrib() {
+                if let Expression::Literal(..) = lhs {
+                    self.new_error("lado esquerdo de um operador de atribuição não pode ser um literal", pos)?;
+                }
+            }
+
             let rhs = self.parse_expression(min_prec)?;
 
             lhs = Expression::BinOp {
@@ -218,8 +202,6 @@ impl<'a> Parser<'a> {
                 lhs: Box::new(lhs),
                 rhs: Box::new(rhs),
             };
-
-            self.is_valid_expression(&lhs, pos)?;
         }
 
         Ok(lhs)

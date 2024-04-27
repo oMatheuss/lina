@@ -130,6 +130,14 @@ impl Operador {
             | Operador::ExpAtrib => OpInfo(1, OpAssoc::R),
         }
     }
+
+    pub fn is_atrib(&self) -> bool {
+        self == &Operador::Atrib
+            || self == &Operador::SubtAtrib
+            || self == &Operador::AdicAtrib
+            || self == &Operador::MultAtrib
+            || self == &Operador::DivAtrib
+    }
 }
 
 impl Display for Operador {
