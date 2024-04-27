@@ -52,7 +52,7 @@ impl<'a> Lexer<'a> {
 
     fn next_char(&mut self) {
         self.curr_char = self.char_iter.next();
-        if let Some (ch) = self.curr_char {
+        if let Some(ch) = self.curr_char {
             self.position += ch.len_utf8();
         }
     }

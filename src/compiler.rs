@@ -20,7 +20,7 @@ impl<'a> Compiler<'a> {
             bytecode: Vec::new(),
             constants: Vec::new(),
             scopes: vec![HashMap::new()],
-            vi: 0
+            vi: 0,
         }
     }
 
@@ -80,7 +80,7 @@ impl<'a> Compiler<'a> {
     fn get_var(&mut self, name: &str) -> usize {
         for scope in self.scopes.iter().rev() {
             if let Some(i) = scope.get(name) {
-                return *i
+                return *i;
             }
         }
 
@@ -102,17 +102,15 @@ impl<'a> Compiler<'a> {
 
     pub fn compile_instruction(&mut self, instr: &'a SyntaxTree) {
         match instr {
-            SyntaxTree::Assign { ident, exprs } => {
-                match *ident {
-                    "saida" => {
-                        self.compile_expr(exprs);
-                        self.op(OpCode::Write);
-                    },
-                    _ => {
-                        let addr = self.set_var(ident);
-                        self.compile_expr(exprs);
-                        self.op_global_store(addr);
-                    }
+            SyntaxTree::Assign { ident, exprs } => match *ident {
+                "saida" => {
+                    self.compile_expr(exprs);
+                    self.op(OpCode::Write);
+                }
+                _ => {
+                    let addr = self.set_var(ident);
+                    self.compile_expr(exprs);
+                    self.op_global_store(addr);
                 }
             },
             SyntaxTree::SeStmt { expr, block } => {
@@ -128,7 +126,7 @@ impl<'a> Compiler<'a> {
 
                 let jmp_offset = (end - start) as isize; // length of block
                 self.insert_offset(jmp_offset, jmp_offset_pos); // jump over the block
-            },
+            }
             SyntaxTree::EnquantoStmt { expr, block } => {
                 let expr_start = self.bytecode.len(); // start while expression
                 self.compile_expr(expr);
@@ -144,21 +142,21 @@ impl<'a> Compiler<'a> {
                 let jmp_offset_pos = self.bytecode.len();
                 self.push_offset(0);
                 let end = self.bytecode.len(); //  end while expression
-                
+
                 let jmp_offset = (end - expr_start) as isize; // jmp will go back to expr evaluation
                 self.insert_offset(-jmp_offset, jmp_offset_pos);
 
                 let end = self.bytecode.len();
                 let jmp_offset = (end - block_start) as isize; // this will skip the block and jmp
                 self.insert_offset(jmp_offset, jmpf_offset_pos);
-            },
+            }
             SyntaxTree::ParaStmt { ident, expr, block } => todo!(),
             SyntaxTree::Expr(expr) => {
                 self.compile_expr(expr);
             }
         }
     }
-    
+
     pub fn compile_expr(&mut self, exprs: &Expression) {
         match exprs {
             Expression::Literal(literal) => {
@@ -167,22 +165,22 @@ impl<'a> Compiler<'a> {
                 match *literal {
                     Literal::Numero(number) => {
                         self.push_nconst(number);
-                    },
+                    }
                     Literal::Texto(text) => {
                         self.constants.push(LinaValue::String(String::from(text)));
-                    },
+                    }
                     Literal::Booleano(boolean) => {
                         self.constants.push(LinaValue::Boolean(boolean));
-                    },
+                    }
                     Literal::Nulo => todo!(),
                 };
 
                 self.op_const(addr);
-            },
+            }
             Expression::Identifier(identifier) => {
                 let addr = self.get_var(identifier);
                 self.op_global_load(addr);
-            },
+            }
             Expression::BinOp { ope, lhs, rhs } => {
                 // Atrib (:=) does not need a left hand side
                 if *ope != Operador::Atrib {
@@ -197,19 +195,19 @@ impl<'a> Compiler<'a> {
                     Operador::MenorIgualQue => self.op(OpCode::LE),
                     Operador::Igual => self.op(OpCode::Eq),
                     Operador::Diferente => self.op(OpCode::NE),
-                    
+
                     Operador::E => todo!(),
                     Operador::Ou => todo!(),
-                    
+
                     Operador::Adic | Operador::AdicAtrib => self.op(OpCode::Add),
-                    Operador::Subt | Operador::SubtAtrib  => self.op(OpCode::Sub),
+                    Operador::Subt | Operador::SubtAtrib => self.op(OpCode::Sub),
                     Operador::Mult | Operador::MultAtrib => self.op(OpCode::Mul),
                     Operador::Div | Operador::DivAtrib => self.op(OpCode::Div),
 
                     Operador::Resto | Operador::RestoAtrib => todo!(),
                     Operador::Exp | Operador::ExpAtrib => todo!(),
 
-                    Operador::Atrib => {},
+                    Operador::Atrib => {}
                 };
 
                 let is_atrib = *ope == Operador::Atrib
@@ -219,14 +217,16 @@ impl<'a> Compiler<'a> {
                     || *ope == Operador::DivAtrib
                     || *ope == Operador::RestoAtrib
                     || *ope == Operador::ExpAtrib;
-                
+
                 if is_atrib {
-                    let Expression::Identifier(identifier) = *lhs.to_owned() else { unreachable!() };
+                    let Expression::Identifier(identifier) = *lhs.to_owned() else {
+                        unreachable!()
+                    };
                     let addr = self.get_var(identifier);
                     self.op_global_store(addr);
                     //self.op_global_load(addr);
                 }
-            },
+            }
         }
     }
 }

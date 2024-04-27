@@ -47,7 +47,7 @@ impl Display for Token<'_> {
             Token::Real => write!(f, ""),
             Token::Texto => write!(f, ""),
             Token::Booleano => write!(f, ""),
-            
+
             Token::Se => write!(f, "se"),
             Token::Entao => write!(f, "então"),
 
@@ -55,7 +55,7 @@ impl Display for Token<'_> {
             Token::Para => write!(f, "para"),
             Token::Ate => write!(f, "ate"),
             Token::Repetir => write!(f, "repetir"),
-            
+
             Token::Funcao => write!(f, "função"),
             Token::Retorne => write!(f, "retorne"),
 

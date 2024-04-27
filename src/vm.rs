@@ -16,7 +16,7 @@ pub enum OpCode {
     Jmp,
     JmpT,
     JmpF,
-    
+
     Eq,
     NE,
     LT,
@@ -55,28 +55,28 @@ impl LinaValue {
     fn as_number(self) -> f32 {
         match self {
             Self::Number(number) => number,
-            _ => panic!("variavel não é um número")
+            _ => panic!("variavel não é um número"),
         }
     }
 
     fn as_string(self) -> String {
         match self {
             Self::String(string) => string,
-            _ => panic!("variavel não é uma string")
+            _ => panic!("variavel não é uma string"),
         }
     }
 
     fn as_bool(self) -> bool {
         match self {
             Self::Boolean(boolean) => boolean,
-            _ => panic!("variavel não é um booleano")
+            _ => panic!("variavel não é um booleano"),
         }
     }
 
     fn as_address(self) -> usize {
         match self {
             Self::Address(address) => address,
-            _ => panic!("variavel não é um endereço")
+            _ => panic!("variavel não é um endereço"),
         }
     }
 }
@@ -121,12 +121,15 @@ macro_rules! binary_op {
 #[derive(Debug)]
 struct Frame {
     locals: Vec<LinaValue>, // local variables
-    stack: Vec<LinaValue>, // operand stack
+    stack: Vec<LinaValue>,  // operand stack
 }
 
 impl Frame {
     fn new(return_address: usize) -> Self {
-        Self { locals: Vec::new(), stack: vec![LinaValue::Address(return_address)] }
+        Self {
+            locals: Vec::new(),
+            stack: vec![LinaValue::Address(return_address)],
+        }
     }
 }
 
@@ -137,9 +140,9 @@ pub struct LinaVm<'a> {
     pc: usize, // program counter
 
     constants: &'a [LinaValue], // constant pool
-    callstack: Vec<Frame>, // call stack
+    callstack: Vec<Frame>,      // call stack
 
-    globals: Vec<LinaValue>
+    globals: Vec<LinaValue>,
 }
 
 impl<'a> LinaVm<'a> {
@@ -154,15 +157,20 @@ impl<'a> LinaVm<'a> {
     }
 
     fn push(&mut self, value: LinaValue) {
-        self.callstack.last_mut()
+        self.callstack
+            .last_mut()
             .expect("frame stack should not be empty")
-            .stack.push(value);
+            .stack
+            .push(value);
     }
 
     fn pop(&mut self) -> LinaValue {
-        self.callstack.last_mut()
+        self.callstack
+            .last_mut()
             .expect("frame stack should not be empty")
-            .stack.pop().expect("stack should not be empty")
+            .stack
+            .pop()
+            .expect("stack should not be empty")
     }
 
     fn read_byte(&mut self) -> u8 {
@@ -183,15 +191,18 @@ impl<'a> LinaVm<'a> {
     }
 
     fn store(&mut self, value: LinaValue, address: usize) {
-        self.callstack.last_mut()
+        self.callstack
+            .last_mut()
             .expect("frame stack should not be empty")
             .locals[address] = value;
     }
 
     fn read(&mut self, address: usize) -> LinaValue {
-        self.callstack.last_mut()
+        self.callstack
+            .last_mut()
             .expect("frame stack should not be empty")
-            .locals[address].clone()
+            .locals[address]
+            .clone()
     }
 
     fn store_global(&mut self, value: LinaValue, address: usize) {
@@ -217,12 +228,12 @@ impl<'a> LinaVm<'a> {
                     let index = self.read_address();
                     let constant = &self.constants[index];
                     self.push(constant.clone());
-                },
+                }
                 OpCode::Dup => {
                     let top = self.pop();
                     self.push(top.clone());
                     self.push(top);
-                },
+                }
 
                 OpCode::Add => binary_op!(self, +),
                 OpCode::Sub => binary_op!(self, -),
@@ -242,7 +253,7 @@ impl<'a> LinaVm<'a> {
                 OpCode::Jmp => {
                     let offset = self.read_offset();
                     self.pc = (self.pc as isize + offset) as usize;
-                },
+                }
                 OpCode::JmpT => {
                     let condition = self.pop();
                     let offset = self.read_offset();
@@ -250,7 +261,7 @@ impl<'a> LinaVm<'a> {
                     if condition.as_bool() {
                         self.pc = (self.pc as isize + offset) as usize;
                     }
-                },
+                }
                 OpCode::JmpF => {
                     let condition = self.pop();
                     let offset = self.read_offset();
@@ -258,46 +269,46 @@ impl<'a> LinaVm<'a> {
                     if !condition.as_bool() {
                         self.pc = (self.pc as isize + offset) as usize;
                     }
-                },
+                }
 
                 OpCode::Call => {
                     let function_address = self.read_address();
                     let frame = Frame::new(self.pc);
                     self.callstack.push(frame);
                     self.pc = function_address;
-                },
+                }
                 OpCode::Return => {
                     let return_address = self.pop().as_address();
                     self.callstack.pop();
                     self.pc = return_address;
-                },
+                }
 
                 OpCode::Load => {
                     let address = self.read_address();
                     let value = self.read(address);
                     self.push(value);
-                },
+                }
                 OpCode::Store => {
                     let value = self.pop();
                     let address = self.read_address();
                     self.store(value, address);
-                },
+                }
 
                 OpCode::GLoad => {
                     let address = self.read_address();
                     let value = self.read_global(address);
                     self.push(value);
-                },
+                }
                 OpCode::GStore => {
                     let value = self.pop();
                     let address = self.read_address();
                     self.store_global(value, address);
-                },
+                }
 
                 OpCode::Write => {
                     let value = self.pop();
                     println!("{value}");
-                },
+                }
                 OpCode::Read => todo!(),
             }
         }

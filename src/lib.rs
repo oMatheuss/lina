@@ -1,9 +1,9 @@
+mod compiler;
 mod lexer;
 mod parser;
 mod syntax;
 mod token;
 mod vm;
-mod compiler;
 
 pub fn run_code(file_name: String, code: &str) -> Result<(), ()> {
     let tokens = lexer::lex(code).map_err(|err| {

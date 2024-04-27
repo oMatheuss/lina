@@ -17,7 +17,7 @@ pub enum Type {
     Real,
     Text,
     Boolean,
-    Vector
+    Vector,
 }
 
 #[derive(Debug, Clone)]
@@ -129,7 +129,7 @@ impl<'a> Display for SyntaxTree<'a> {
             }
             SyntaxTree::Expr(expr) => {
                 writeln!(f, "{expr}")
-            },
+            }
         }
     }
 }

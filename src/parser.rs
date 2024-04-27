@@ -1,4 +1,3 @@
-use std::borrow::Borrow;
 use std::iter::Peekable;
 use std::mem;
 use std::vec::IntoIter;
@@ -114,7 +113,7 @@ impl<'a> Parser<'a> {
                 self.consume_invariant(Token::Operador(Operador::Atrib))?;
                 let exprs = self.parse_expression(1)?;
                 SyntaxTree::Assign { ident, exprs }
-            },
+            }
             Token::Enquanto => {
                 self.consume_invariant(Token::Enquanto)?;
                 let expr = self.parse_expression(1)?;
@@ -169,7 +168,11 @@ impl<'a> Parser<'a> {
         let mut lhs = self.parse_atom()?;
 
         loop {
-            let Some(TokenDef { kind, position: op_pos }) = self.peek() else {
+            let Some(TokenDef {
+                kind,
+                position: op_pos,
+            }) = self.peek()
+            else {
                 break;
             };
             let pos = op_pos.clone();
@@ -191,7 +194,10 @@ impl<'a> Parser<'a> {
 
             if ope.is_atrib() {
                 if let Expression::Literal(..) = lhs {
-                    self.new_error("lado esquerdo de um operador de atribuição não pode ser um literal", pos)?;
+                    self.new_error(
+                        "lado esquerdo de um operador de atribuição não pode ser um literal",
+                        pos,
+                    )?;
                 }
             }
 
