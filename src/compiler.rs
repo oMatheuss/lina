@@ -24,11 +24,6 @@ impl<'a> Compiler<'a> {
         }
     }
 
-    fn push_nconst(&mut self, value: f32) -> usize {
-        self.constants.push(LinaValue::Number(value));
-        self.constants.len() - 1
-    }
-
     fn op_const(&mut self, addr: usize) {
         self.bytecode.push(OpCode::Const as u8);
         self.bytecode.extend(usize::to_ne_bytes(addr));
@@ -94,7 +89,7 @@ impl<'a> Compiler<'a> {
 
     fn compile_block(&mut self, block: &'a Block) {
         self.enter_scope();
-        for instr in block.iter() {
+        for instr in block.iter_stmts() {
             self.compile_instruction(instr);
         }
         self.exit_scope();
@@ -102,16 +97,10 @@ impl<'a> Compiler<'a> {
 
     pub fn compile_instruction(&mut self, instr: &'a SyntaxTree) {
         match instr {
-            SyntaxTree::Assign { ident, exprs } => match *ident {
-                "saida" => {
-                    self.compile_expr(exprs);
-                    self.op(OpCode::Write);
-                }
-                _ => {
-                    let addr = self.set_var(ident);
-                    self.compile_expr(exprs);
-                    self.op_global_store(addr);
-                }
+            SyntaxTree::Assign { ident, expr, pos, vtype} => {
+                let addr = self.set_var(ident);
+                self.compile_expr(expr);
+                self.op_global_store(addr);
             },
             SyntaxTree::SeStmt { expr, block } => {
                 self.compile_expr(expr);
@@ -154,17 +143,21 @@ impl<'a> Compiler<'a> {
             SyntaxTree::Expr(expr) => {
                 self.compile_expr(expr);
             }
+            SyntaxTree::Print(expr) => {
+                self.compile_expr(expr);
+                self.op(OpCode::Write);
+            }
         }
     }
 
-    pub fn compile_expr(&mut self, exprs: &Expression) {
-        match exprs {
+    pub fn compile_expr(&mut self, expr: &Expression) {
+        match expr {
             Expression::Literal(literal) => {
                 let addr = self.constants.len();
 
                 match *literal {
                     Literal::Numero(number) => {
-                        self.push_nconst(number);
+                        self.constants.push(LinaValue::Number(number));
                     }
                     Literal::Texto(text) => {
                         self.constants.push(LinaValue::String(String::from(text)));
@@ -245,12 +238,12 @@ fn test() {
     use crate::{lexer, parser, vm};
 
     let code = r#"
-    seja x := 0
-    seja y := 1
-    saida := "Calculo de Fibonacci!"
+    programa fibonacci
+    inteiro x := 0
+    inteiro y := 1
     saida := x
     enquanto x < 10000000 repetir
-        seja z := x + y
+        inteiro z := x + y
         x := y
         y := z
         saida := x

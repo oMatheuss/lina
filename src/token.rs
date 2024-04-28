@@ -69,7 +69,7 @@ impl Display for Token<'_> {
     }
 }
 
-#[derive(Debug, PartialEq, Clone)]
+#[derive(Debug, PartialEq, Clone, PartialOrd)]
 pub enum Operador {
     // Operadores Booleanos
     MaiorQue,
@@ -132,11 +132,16 @@ impl Operador {
     }
 
     pub fn is_atrib(&self) -> bool {
-        self == &Operador::Atrib
-            || self == &Operador::SubtAtrib
-            || self == &Operador::AdicAtrib
-            || self == &Operador::MultAtrib
-            || self == &Operador::DivAtrib
+        self >= &Operador::Atrib
+    }
+
+    pub fn is_boolean(&self) -> bool {
+        self <= &Operador::Ou
+    }
+
+    pub fn is_arithmetic(&self) -> bool {
+        self >= &Operador::Adic
+            && self <= &Operador::Exp
     }
 }
 

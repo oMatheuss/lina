@@ -1,11 +1,8 @@
-use std::{
-    fmt::Display,
-    ops::{Deref, DerefMut},
-};
+use std::fmt::Display;
 
-use crate::token::{Literal, Operador};
+use crate::token::{Literal, Operador, TokenPos};
 
-#[derive(Debug, Clone)]
+#[derive(Debug)]
 pub struct Program<'a> {
     pub name: &'a str,
     pub block: Block<'a>,
@@ -20,12 +17,15 @@ pub enum Type {
     Vector,
 }
 
-#[derive(Debug, Clone)]
+#[derive(Debug)]
 pub enum SyntaxTree<'a> {
     Assign {
+        pos: TokenPos,
+        vtype: Type,
         ident: &'a str,
-        exprs: Expression<'a>,
+        expr: Expression<'a>,
     },
+    Print(Expression<'a>),
     Expr(Expression<'a>),
     SeStmt {
         expr: Expression<'a>,
@@ -42,32 +42,21 @@ pub enum SyntaxTree<'a> {
     },
 }
 
-#[derive(Debug, Clone)]
-pub struct Block<'a>(Vec<SyntaxTree<'a>>);
-
-impl<'a> Deref for Block<'a> {
-    type Target = Vec<SyntaxTree<'a>>;
-
-    fn deref(&self) -> &Self::Target {
-        &self.0
-    }
-}
-
-impl<'a> DerefMut for Block<'a> {
-    fn deref_mut(&mut self) -> &mut Self::Target {
-        &mut self.0
-    }
-}
-
-impl<'a> From<Vec<SyntaxTree<'a>>> for Block<'a> {
-    fn from(value: Vec<SyntaxTree<'a>>) -> Self {
-        Block(value)
-    }
+#[derive(Debug)]
+pub struct Block<'a> {
+    stmts: Vec<SyntaxTree<'a>>,
 }
 
 impl<'a> Block<'a> {
     pub fn new() -> Self {
-        Self(Vec::new())
+        Self { stmts: Vec::new() }
+    }
+    pub fn push_stmt(&mut self, stmt: SyntaxTree<'a>) {
+        self.stmts.push(stmt);
+    }
+
+    pub fn iter_stmts(&self) -> std::slice::Iter<'_, SyntaxTree> {
+        self.stmts.iter()
     }
 }
 
@@ -86,7 +75,7 @@ impl<'a> Display for Program<'a> {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         writeln!(f, "programa {}", self.name)?;
 
-        for node in self.block.iter() {
+        for node in self.block.iter_stmts() {
             write!(f, "{}", node)?;
         }
 
@@ -109,8 +98,8 @@ impl Display for Type {
 impl<'a> Display for SyntaxTree<'a> {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         match self {
-            SyntaxTree::Assign { ident, exprs } => {
-                writeln!(f, "seja {ident} := {exprs}")
+            SyntaxTree::Assign { pos, vtype, ident, expr } => {
+                writeln!(f, "{vtype} {ident} := {expr}")
             }
             SyntaxTree::SeStmt { expr, block } => {
                 writeln!(f, "se {expr} entao")?;
@@ -130,6 +119,9 @@ impl<'a> Display for SyntaxTree<'a> {
             SyntaxTree::Expr(expr) => {
                 writeln!(f, "{expr}")
             }
+            SyntaxTree::Print(expr) => {
+                writeln!(f, "saida := {expr}")
+            },
         }
     }
 }
@@ -137,7 +129,7 @@ impl<'a> Display for SyntaxTree<'a> {
 impl<'a> Display for Block<'a> {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         let sub_stmts = self
-            .iter()
+            .iter_stmts()
             .map(ToString::to_string)
             .collect::<String>()
             .trim_end()

@@ -2,8 +2,8 @@ use std::iter::Peekable;
 use std::mem;
 use std::vec::IntoIter;
 
-use crate::syntax::{Block, Expression, Program, SyntaxTree};
-use crate::token::{Delimitador, Literal, OpAssoc, OpInfo, Operador, Token, TokenDef, TokenPos};
+use crate::syntax::{Block, Expression, Program, SyntaxTree, Type};
+use crate::token::{Delimitador, OpAssoc, OpInfo, Operador, Token, TokenDef, TokenPos};
 
 #[derive(Debug)]
 pub struct SyntaxError {
@@ -89,30 +89,29 @@ impl<'a> Parser<'a> {
         let token_ref = self.peek().unwrap();
         let position = token_ref.position.clone();
 
-        let statement = match token_ref.kind {
-            Token::Seja | Token::Inteiro | Token::Real | Token::Texto => {
-                self.consume_invariant(Token::Seja)?;
-                let ident = self.consume_identifier()?;
-                if let Some(TokenDef {
-                    kind: Token::Operador(Operador::Atrib),
-                    position: _,
-                }) = self.peek()
-                {
-                    self.consume_invariant(Token::Operador(Operador::Atrib))?;
-                    let exprs = self.parse_expression(1)?;
-                    SyntaxTree::Assign { ident, exprs }
-                } else {
-                    SyntaxTree::Assign {
-                        ident,
-                        exprs: Expression::Literal(Literal::Nulo),
-                    }
-                }
-            }
-            Token::Identificador("saida") => {
+        let stmt = match token_ref.kind {
+            Token::Seja | Token::Inteiro | Token::Real | Token::Booleano | Token::Texto => {
+                let decl = self.advance()?;
                 let ident = self.consume_identifier()?;
                 self.consume_invariant(Token::Operador(Operador::Atrib))?;
-                let exprs = self.parse_expression(1)?;
-                SyntaxTree::Assign { ident, exprs }
+                let expr = self.parse_expression(1)?;
+
+                let vtype = match decl.kind {
+                    Token::Seja => todo!(),
+                    Token::Inteiro => Type::Integer,
+                    Token::Real => Type::Real,
+                    Token::Texto => Type::Text,
+                    Token::Booleano => Type::Boolean,
+                    _ => unreachable!()
+                };
+
+                SyntaxTree::Assign { pos: position, ident, expr, vtype }
+            }
+            Token::Identificador("saida") => {
+                let _ = self.consume_identifier()?;
+                self.consume_invariant(Token::Operador(Operador::Atrib))?;
+                let expr = self.parse_expression(1)?;
+                SyntaxTree::Print(expr)
             }
             Token::Enquanto => {
                 self.consume_invariant(Token::Enquanto)?;
@@ -128,7 +127,6 @@ impl<'a> Parser<'a> {
                 let block = self.parse_block()?;
                 SyntaxTree::SeStmt { expr, block }
             }
-            Token::Funcao => todo!(),
             Token::Para => {
                 self.consume_invariant(Token::Para)?;
                 let ident = self.consume_identifier()?;
@@ -138,6 +136,7 @@ impl<'a> Parser<'a> {
                 let block = self.parse_block()?;
                 SyntaxTree::ParaStmt { ident, expr, block }
             }
+            Token::Funcao => todo!(),
             Token::Retorne => todo!(),
             Token::Identificador(..) | Token::Literal(..) | Token::Delimitador(..) => {
                 let expression = self.parse_expression(1)?;
@@ -146,7 +145,7 @@ impl<'a> Parser<'a> {
             _ => self.new_error("token inesperado", position)?,
         };
 
-        Ok(statement)
+        Ok(stmt)
     }
 
     fn parse_atom(&mut self) -> Result<Expression<'a>> {
@@ -215,25 +214,31 @@ impl<'a> Parser<'a> {
 
     fn parse_block(&mut self) -> Result<Block<'a>> {
         let mut block = Block::new();
+
         while let Some(token) = self.peek() {
             if token.kind == Token::Fim {
                 break;
             }
-            block.push(self.parse_statement()?);
+            let stmt = self.parse_statement()?;
+            block.push_stmt(stmt);
         }
         self.consume_invariant(Token::Fim)?;
+
         Ok(block)
     }
 
     fn parse_program(&mut self) -> Result<Program<'a>> {
         let mut block = Block::new();
+
+        self.consume_invariant(Token::Programa)?;
+        let name = self.consume_identifier()?;
+        
         while let Some(..) = self.peek() {
-            block.push(self.parse_statement()?);
+            let stmt = self.parse_statement()?;
+            block.push_stmt(stmt);
         }
-        Ok(Program {
-            name: "teste",
-            block,
-        })
+
+        Ok(Program { name, block })
     }
 
     pub fn parse(&mut self) -> Result<Program<'a>> {
