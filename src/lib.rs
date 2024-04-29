@@ -10,14 +10,9 @@ pub fn run_code(file_name: String, code: &str) -> Result<(), ()> {
         eprintln!("{}", err);
     })?;
 
-    println!("file: {}", file_name);
-    println!("tokens: {:#?}", tokens);
-
     let program = parser::parse(tokens).map_err(|err| {
         eprintln!("{}", err);
     })?;
-
-    println!("syntax: {:#?}", program);
 
     compiler::execute_program(program);
 

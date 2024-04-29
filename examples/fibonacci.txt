@@ -1,8 +1,15 @@
-seja x1 := 0
-seja x2 := 1
+programa fibonacci
 
-enquanto x1 < 30000000 repetir
-    seja x3 := x2
-    x2 += x1
-    x1 := x3
+inteiro x := 0
+inteiro y := 1
+inteiro i := 0
+
+saida := x
+
+enquanto i <= 20 repetir
+    inteiro z := x + y
+    x := y
+    y := z
+    i += 1
+    saida := x
 fim
