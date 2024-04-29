@@ -36,7 +36,7 @@ impl<'a> Lexer<'a> {
             input,
             char_iter,
             position: 0,
-            line_num: 0,
+            line_num: 1,
             line_start: 0,
             curr_char,
         }
@@ -96,10 +96,10 @@ impl<'a> Lexer<'a> {
             if c.is_alphanumeric() {
                 self.next_char();
             } else {
-                break;
+                return &self.input[start..self.position];
             }
         }
-        &self.input[start..self.position]
+        &self.input[start..=self.position]
     }
 
     fn consume_number(&mut self) -> Result<&'a str> {
