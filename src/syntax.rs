@@ -98,7 +98,12 @@ impl Display for Type {
 impl<'a> Display for SyntaxTree<'a> {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         match self {
-            SyntaxTree::Assign { pos, vtype, ident, expr } => {
+            SyntaxTree::Assign {
+                pos,
+                vtype,
+                ident,
+                expr,
+            } => {
                 writeln!(f, "{vtype} {ident} := {expr}")
             }
             SyntaxTree::SeStmt { expr, block } => {
@@ -121,7 +126,7 @@ impl<'a> Display for SyntaxTree<'a> {
             }
             SyntaxTree::Print(expr) => {
                 writeln!(f, "saida := {expr}")
-            },
+            }
         }
     }
 }

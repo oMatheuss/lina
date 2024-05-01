@@ -140,8 +140,7 @@ impl Operador {
     }
 
     pub fn is_arithmetic(&self) -> bool {
-        self >= &Operador::Adic
-            && self <= &Operador::Exp
+        self >= &Operador::Adic && self <= &Operador::Exp
     }
 }
 

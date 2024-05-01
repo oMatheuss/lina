@@ -12,6 +12,7 @@ pub enum OpCode {
     Sub,
     Mul,
     Div,
+    Rem,
 
     Jmp,
     JmpT,
@@ -30,60 +31,105 @@ pub enum OpCode {
     Load,
     Store,
 
-    GLoad,
-    GStore,
-
     Call,
     Return,
 }
 
-impl From<u8> for OpCode {
-    fn from(value: u8) -> Self {
-        unsafe { std::mem::transmute(value) }
+#[derive(Debug)]
+pub struct CodeError(String);
+
+impl From<String> for CodeError {
+    fn from(value: String) -> Self {
+        Self(value)
+    }
+}
+
+impl Display for CodeError {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        write!(f, "CodeError: {}", self.0)
+    }
+}
+
+impl TryFrom<u8> for OpCode {
+    type Error = CodeError;
+
+    fn try_from(value: u8) -> Result<Self, Self::Error> {
+        if value < OpCode::Halt as u8 || value > OpCode::Return as u8 {
+            Err(format!("{value} não é um opcode conhecido").into())
+        } else {
+            Ok(unsafe { std::mem::transmute(value) })
+        }
     }
 }
 
 #[derive(PartialEq, Clone, Debug)]
 pub enum LinaValue {
-    Number(f32),
+    Int32(i32),
+    Float32(f32),
     String(String),
     Boolean(bool),
     Address(usize),
 }
 
-impl LinaValue {
-    fn as_number(self) -> f32 {
+pub struct TypeError(String);
+
+impl From<&str> for TypeError {
+    fn from(value: &str) -> Self {
+        Self(value.to_string())
+    }
+}
+
+impl From<String> for TypeError {
+    fn from(value: String) -> Self {
+        Self(value)
+    }
+}
+
+impl Display for TypeError {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        write!(f, "TypeError: {}", self.0)
+    }
+}
+
+impl TryInto<i32> for LinaValue {
+    type Error = TypeError;
+
+    fn try_into(self) -> Result<i32, Self::Error> {
         match self {
-            Self::Number(number) => number,
-            _ => panic!("variavel não é um número"),
+            Self::Int32(number) => Ok(number),
+            Self::Float32(number) => Ok(number as i32),
+            other => Err(format!("{other} não pode ser convertido em i32").into()),
         }
     }
+}
 
-    fn as_string(self) -> String {
-        match self {
-            Self::String(string) => string,
-            _ => panic!("variavel não é uma string"),
-        }
+impl From<i32> for LinaValue {
+    fn from(value: i32) -> Self {
+        LinaValue::Int32(value)
     }
+}
 
-    fn as_bool(self) -> bool {
-        match self {
-            Self::Boolean(boolean) => boolean,
-            _ => panic!("variavel não é um booleano"),
-        }
-    }
+impl TryInto<f32> for LinaValue {
+    type Error = TypeError;
 
-    fn as_address(self) -> usize {
+    fn try_into(self) -> Result<f32, Self::Error> {
         match self {
-            Self::Address(address) => address,
-            _ => panic!("variavel não é um endereço"),
+            Self::Float32(number) => Ok(number),
+            Self::Int32(number) => Ok(number as f32),
+            other => Err(format!("{other} não pode ser convertido em f32").into()),
         }
     }
 }
 
 impl From<f32> for LinaValue {
     fn from(value: f32) -> Self {
-        LinaValue::Number(value)
+        LinaValue::Float32(value)
+    }
+}
+
+impl Into<String> for LinaValue {
+    fn into(self) -> String {
+        self.to_string()
     }
 }
 
@@ -93,45 +139,93 @@ impl From<String> for LinaValue {
     }
 }
 
+impl TryInto<bool> for LinaValue {
+    type Error = TypeError;
+
+    fn try_into(self) -> Result<bool, Self::Error> {
+        match self {
+            Self::Boolean(boolean) => Ok(boolean),
+            other => Err(format!("{other} não pode ser convertido em bool").into()),
+        }
+    }
+}
+
 impl From<bool> for LinaValue {
     fn from(value: bool) -> Self {
         LinaValue::Boolean(value)
     }
 }
 
+impl TryInto<usize> for LinaValue {
+    type Error = TypeError;
+
+    fn try_into(self) -> Result<usize, Self::Error> {
+        match self {
+            Self::Address(address) => Ok(address),
+            Self::Int32(number) => {
+                if number >= 0 {
+                    Ok(number as usize)
+                } else {
+                    Err(format!("{number} é negativo e não pode ser convertido em usize").into())
+                }
+            }
+            Self::Float32(number) => {
+                if number >= 0.0 {
+                    Ok(number as usize)
+                } else {
+                    Err(format!("{number} é negativo e não pode ser convertido em usize").into())
+                }
+            }
+            other => Err(format!("{other} não pode ser convertido em usize").into()),
+        }
+    }
+}
+
+impl From<usize> for LinaValue {
+    fn from(value: usize) -> Self {
+        LinaValue::Address(value)
+    }
+}
+
 impl Display for LinaValue {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         match self {
-            LinaValue::Number(value) => write!(f, "{value}"),
-            LinaValue::String(value) => write!(f, "{value}"),
-            LinaValue::Boolean(value) => write!(f, "{value}"),
+            LinaValue::Int32(value) => value.fmt(f),
+            LinaValue::Float32(value) => value.fmt(f),
+            LinaValue::String(value) => value.fmt(f),
+            LinaValue::Boolean(value) => value.fmt(f),
             LinaValue::Address(value) => write!(f, "{value:#02x}"),
         }
     }
 }
 
-macro_rules! binary_op {
-    ($x:ident, $op:tt) => {{
-        let a = $x.pop().as_number();
-        let b = $x.pop().as_number();
-        $x.push((b $op a).into());
-    }};
+pub enum RuntimeError {
+    CodeError(CodeError),
+    TypeError(TypeError),
 }
 
-#[derive(Debug)]
-struct Frame {
-    locals: Vec<LinaValue>, // local variables
-    stack: Vec<LinaValue>,  // operand stack
+impl From<TypeError> for RuntimeError {
+    fn from(value: TypeError) -> Self {
+        Self::TypeError(value)
+    }
 }
 
-impl Frame {
-    fn new(return_address: usize) -> Self {
-        Self {
-            locals: Vec::new(),
-            stack: vec![LinaValue::Address(return_address)],
+impl From<CodeError> for RuntimeError {
+    fn from(value: CodeError) -> Self {
+        Self::CodeError(value)
+    }
+}
+
+impl Display for RuntimeError {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        match self {
+            RuntimeError::CodeError(err) => write!(f, "{err}"),
+            RuntimeError::TypeError(err) => write!(f, "{err}"),
         }
     }
 }
+
+type VmResult = Result<(), RuntimeError>;
 
 #[derive(Debug)]
 pub struct LinaVm<'a> {
@@ -139,8 +233,8 @@ pub struct LinaVm<'a> {
 
     pc: usize, // program counter
 
+    stack: Vec<LinaValue>,      // operand stack
     constants: &'a [LinaValue], // constant pool
-    callstack: Vec<Frame>,      // call stack
 
     globals: Vec<LinaValue>,
 }
@@ -150,62 +244,38 @@ impl<'a> LinaVm<'a> {
         Self {
             bytecode,
             pc: 0,
+            stack: Vec::with_capacity(512),
             constants,
-            callstack: vec![Frame::new(0)],
             globals: Vec::new(),
         }
     }
 
     fn push(&mut self, value: LinaValue) {
-        self.callstack
-            .last_mut()
-            .expect("frame stack should not be empty")
-            .stack
-            .push(value);
+        self.stack.push(value);
     }
 
     fn pop(&mut self) -> LinaValue {
-        self.callstack
-            .last_mut()
-            .expect("frame stack should not be empty")
-            .stack
-            .pop()
-            .expect("stack should not be empty")
+        self.stack.pop().expect("stack should not be empty")
     }
 
-    fn read_byte(&mut self) -> u8 {
+    fn next_byte(&mut self) -> u8 {
         assert!(self.pc < self.bytecode.len());
         let byte = self.bytecode[self.pc];
         self.pc += 1;
         byte
     }
 
-    fn read_address(&mut self) -> usize {
-        let bytes = core::array::from_fn(|_i| self.read_byte());
+    fn next_address(&mut self) -> usize {
+        let bytes = core::array::from_fn(|_i| self.next_byte());
         usize::from_ne_bytes(bytes)
     }
 
-    fn read_offset(&mut self) -> isize {
-        let bytes = core::array::from_fn(|_i| self.read_byte());
+    fn next_offset(&mut self) -> isize {
+        let bytes = core::array::from_fn(|_i| self.next_byte());
         isize::from_ne_bytes(bytes)
     }
 
     fn store(&mut self, value: LinaValue, address: usize) {
-        self.callstack
-            .last_mut()
-            .expect("frame stack should not be empty")
-            .locals[address] = value;
-    }
-
-    fn read(&mut self, address: usize) -> LinaValue {
-        self.callstack
-            .last_mut()
-            .expect("frame stack should not be empty")
-            .locals[address]
-            .clone()
-    }
-
-    fn store_global(&mut self, value: LinaValue, address: usize) {
         while self.globals.len() < address + 1 {
             self.globals.push(0.0.into());
         }
@@ -213,19 +283,196 @@ impl<'a> LinaVm<'a> {
         self.globals[address] = value;
     }
 
-    fn read_global(&mut self, address: usize) -> LinaValue {
+    fn load(&mut self, address: usize) -> LinaValue {
         self.globals[address].clone()
     }
 
-    pub fn run(&mut self) {
+    fn binary_op(&mut self, op: OpCode) -> VmResult {
+        let rhs = self.pop();
+        let lhs = self.pop();
+
+        let result: LinaValue = match op {
+            OpCode::Add => match lhs {
+                LinaValue::Int32(lhs) => {
+                    let rhs: i32 = rhs.try_into()?;
+                    (lhs + rhs).into()
+                }
+                LinaValue::Float32(lhs) => {
+                    let rhs: f32 = rhs.try_into()?;
+                    (lhs + rhs).into()
+                }
+                LinaValue::Address(lhs) => {
+                    let rhs: usize = rhs.try_into()?;
+                    (lhs + rhs).into()
+                }
+                LinaValue::String(lhs) => {
+                    let rhs: String = rhs.into();
+                    (lhs + &rhs).into()
+                }
+                _ => Err(TypeError(format!(
+                    "operacao + não implementada para {:?}",
+                    lhs
+                )))?,
+            },
+            OpCode::Sub => match lhs {
+                LinaValue::Int32(lhs) => {
+                    let rhs: i32 = rhs.try_into()?;
+                    (lhs - rhs).into()
+                }
+                LinaValue::Float32(lhs) => {
+                    let rhs: f32 = rhs.try_into()?;
+                    (lhs - rhs).into()
+                }
+                LinaValue::Address(lhs) => {
+                    let rhs: usize = rhs.try_into()?;
+                    (lhs - rhs).into()
+                }
+                _ => Err(TypeError(format!(
+                    "operacao - não implementada para {:?}",
+                    lhs
+                )))?,
+            },
+            OpCode::Mul => match lhs {
+                LinaValue::Int32(lhs) => {
+                    let rhs: i32 = rhs.try_into()?;
+                    (lhs * rhs).into()
+                }
+                LinaValue::Float32(lhs) => {
+                    let rhs: f32 = rhs.try_into()?;
+                    (lhs * rhs).into()
+                }
+                LinaValue::Address(lhs) => {
+                    let rhs: usize = rhs.try_into()?;
+                    (lhs * rhs).into()
+                }
+                _ => Err(TypeError(format!(
+                    "operacao * não implementada para {:?}",
+                    lhs
+                )))?,
+            },
+            OpCode::Div => match lhs {
+                LinaValue::Int32(lhs) => {
+                    let rhs: i32 = rhs.try_into()?;
+                    (lhs / rhs).into()
+                }
+                LinaValue::Float32(lhs) => {
+                    let rhs: f32 = rhs.try_into()?;
+                    (lhs / rhs).into()
+                }
+                LinaValue::Address(lhs) => {
+                    let rhs: usize = rhs.try_into()?;
+                    (lhs / rhs).into()
+                }
+                _ => Err(TypeError(format!(
+                    "operacao / não implementada para {:?}",
+                    lhs
+                )))?,
+            },
+            OpCode::Rem => match lhs {
+                LinaValue::Int32(lhs) => {
+                    let rhs: i32 = rhs.try_into()?;
+                    (lhs % rhs).into()
+                }
+                LinaValue::Address(lhs) => {
+                    let rhs: usize = rhs.try_into()?;
+                    (lhs % rhs).into()
+                }
+                _ => Err(TypeError(format!(
+                    "operacao % não implementada para {:?}",
+                    lhs
+                )))?,
+            },
+            OpCode::Eq => (lhs == rhs).into(),
+            OpCode::NE => (lhs != rhs).into(),
+            OpCode::LT => match lhs {
+                LinaValue::Int32(lhs) => {
+                    let rhs: i32 = rhs.try_into()?;
+                    (lhs < rhs).into()
+                }
+                LinaValue::Float32(lhs) => {
+                    let rhs: f32 = rhs.try_into()?;
+                    (lhs < rhs).into()
+                }
+                LinaValue::Address(lhs) => {
+                    let rhs: usize = rhs.try_into()?;
+                    (lhs < rhs).into()
+                }
+                _ => Err(TypeError(format!(
+                    "operacao < não implementada para {:?}",
+                    lhs
+                )))?,
+            },
+            OpCode::GT => match lhs {
+                LinaValue::Int32(lhs) => {
+                    let rhs: i32 = rhs.try_into()?;
+                    (lhs > rhs).into()
+                }
+                LinaValue::Float32(lhs) => {
+                    let rhs: f32 = rhs.try_into()?;
+                    (lhs > rhs).into()
+                }
+                LinaValue::Address(lhs) => {
+                    let rhs: usize = rhs.try_into()?;
+                    (lhs > rhs).into()
+                }
+                _ => Err(TypeError(format!(
+                    "operacao > não implementada para {:?}",
+                    lhs
+                )))?,
+            },
+            OpCode::LE => match lhs {
+                LinaValue::Int32(lhs) => {
+                    let rhs: i32 = rhs.try_into()?;
+                    (lhs <= rhs).into()
+                }
+                LinaValue::Float32(lhs) => {
+                    let rhs: f32 = rhs.try_into()?;
+                    (lhs <= rhs).into()
+                }
+                LinaValue::Address(lhs) => {
+                    let rhs: usize = rhs.try_into()?;
+                    (lhs <= rhs).into()
+                }
+                _ => Err(TypeError(format!(
+                    "operacao <= não implementada para {:?}",
+                    lhs
+                )))?,
+            },
+            OpCode::GE => match lhs {
+                LinaValue::Int32(lhs) => {
+                    let rhs: i32 = rhs.try_into()?;
+                    (lhs >= rhs).into()
+                }
+                LinaValue::Float32(lhs) => {
+                    let rhs: f32 = rhs.try_into()?;
+                    (lhs >= rhs).into()
+                }
+                LinaValue::Address(lhs) => {
+                    let rhs: usize = rhs.try_into()?;
+                    (lhs >= rhs).into()
+                }
+                _ => Err(TypeError(format!(
+                    "operacao >= não implementada para {:?}",
+                    lhs
+                )))?,
+            },
+            _ => Err(CodeError(format!("{} não é um operador binário", op as u8)))?,
+        };
+
+        self.push(result);
+
+        Ok(())
+    }
+
+    pub fn run(&mut self) -> VmResult {
         loop {
-            let opcode: OpCode = self.read_byte().into();
+            let opcode: OpCode = self.next_byte().try_into()?;
 
             match opcode {
-                OpCode::Halt => break,
+                OpCode::Halt => return Ok(()),
 
                 OpCode::Const => {
-                    let index = self.read_address();
+                    let index = self.next_address();
                     let constant = &self.constants[index];
                     self.push(constant.clone());
                 }
@@ -235,74 +482,52 @@ impl<'a> LinaVm<'a> {
                     self.push(top);
                 }
 
-                OpCode::Add => binary_op!(self, +),
-                OpCode::Sub => binary_op!(self, -),
-                OpCode::Mul => binary_op!(self, *),
-                OpCode::Div => binary_op!(self, /),
-
-                OpCode::Eq => binary_op!(self, ==),
-                OpCode::NE => binary_op!(self, !=),
-
-                OpCode::LT => binary_op!(self, <),
-                OpCode::GT => binary_op!(self, >),
-
-                OpCode::LE => binary_op!(self, <=),
-                OpCode::GE => binary_op!(self, >=),
+                OpCode::Add
+                | OpCode::Sub
+                | OpCode::Mul
+                | OpCode::Div
+                | OpCode::Rem
+                | OpCode::Eq
+                | OpCode::NE
+                | OpCode::LT
+                | OpCode::GT
+                | OpCode::LE
+                | OpCode::GE => self.binary_op(opcode)?,
 
                 // Controle de fluxo
                 OpCode::Jmp => {
-                    let offset = self.read_offset();
+                    let offset = self.next_offset();
                     self.pc = (self.pc as isize + offset) as usize;
                 }
                 OpCode::JmpT => {
-                    let condition = self.pop();
-                    let offset = self.read_offset();
+                    let condition: bool = self.pop().try_into()?;
+                    let offset = self.next_offset();
 
-                    if condition.as_bool() {
+                    if condition {
                         self.pc = (self.pc as isize + offset) as usize;
                     }
                 }
                 OpCode::JmpF => {
-                    let condition = self.pop();
-                    let offset = self.read_offset();
+                    let condition: bool = self.pop().try_into()?;
+                    let offset = self.next_offset();
 
-                    if !condition.as_bool() {
+                    if !condition {
                         self.pc = (self.pc as isize + offset) as usize;
                     }
                 }
 
-                OpCode::Call => {
-                    let function_address = self.read_address();
-                    let frame = Frame::new(self.pc);
-                    self.callstack.push(frame);
-                    self.pc = function_address;
-                }
-                OpCode::Return => {
-                    let return_address = self.pop().as_address();
-                    self.callstack.pop();
-                    self.pc = return_address;
-                }
+                OpCode::Call => todo!(),
+                OpCode::Return => todo!(),
 
                 OpCode::Load => {
-                    let address = self.read_address();
-                    let value = self.read(address);
+                    let address = self.next_address();
+                    let value = self.load(address);
                     self.push(value);
                 }
                 OpCode::Store => {
                     let value = self.pop();
-                    let address = self.read_address();
+                    let address = self.next_address();
                     self.store(value, address);
-                }
-
-                OpCode::GLoad => {
-                    let address = self.read_address();
-                    let value = self.read_global(address);
-                    self.push(value);
-                }
-                OpCode::GStore => {
-                    let value = self.pop();
-                    let address = self.read_address();
-                    self.store_global(value, address);
                 }
 
                 OpCode::Write => {

@@ -102,10 +102,15 @@ impl<'a> Parser<'a> {
                     Token::Real => Type::Real,
                     Token::Texto => Type::Text,
                     Token::Booleano => Type::Boolean,
-                    _ => unreachable!()
+                    _ => unreachable!(),
                 };
 
-                SyntaxTree::Assign { pos: position, ident, expr, vtype }
+                SyntaxTree::Assign {
+                    pos: position,
+                    ident,
+                    expr,
+                    vtype,
+                }
             }
             Token::Identificador("saida") => {
                 let _ = self.consume_identifier()?;
@@ -232,7 +237,7 @@ impl<'a> Parser<'a> {
 
         self.consume_invariant(Token::Programa)?;
         let name = self.consume_identifier()?;
-        
+
         while let Some(..) = self.peek() {
             let stmt = self.parse_statement()?;
             block.push_stmt(stmt);

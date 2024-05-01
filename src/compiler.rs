@@ -30,12 +30,12 @@ impl<'a> Compiler<'a> {
     }
 
     fn op_global_store(&mut self, addr: usize) {
-        self.bytecode.push(OpCode::GStore as u8);
+        self.bytecode.push(OpCode::Store as u8);
         self.bytecode.extend(usize::to_ne_bytes(addr));
     }
 
     fn op_global_load(&mut self, addr: usize) {
-        self.bytecode.push(OpCode::GLoad as u8);
+        self.bytecode.push(OpCode::Load as u8);
         self.bytecode.extend(usize::to_ne_bytes(addr));
     }
 
@@ -97,11 +97,16 @@ impl<'a> Compiler<'a> {
 
     pub fn compile_instruction(&mut self, instr: &'a SyntaxTree) {
         match instr {
-            SyntaxTree::Assign { ident, expr, pos, vtype} => {
+            SyntaxTree::Assign {
+                ident,
+                expr,
+                pos: _,
+                vtype: _,
+            } => {
                 let addr = self.set_var(ident);
                 self.compile_expr(expr);
                 self.op_global_store(addr);
-            },
+            }
             SyntaxTree::SeStmt { expr, block } => {
                 self.compile_expr(expr);
                 self.op(OpCode::JmpF); // jump if expression is false
@@ -157,7 +162,7 @@ impl<'a> Compiler<'a> {
 
                 match *literal {
                     Literal::Numero(number) => {
-                        self.constants.push(LinaValue::Number(number));
+                        self.constants.push(LinaValue::Float32(number));
                     }
                     Literal::Texto(text) => {
                         self.constants.push(LinaValue::String(String::from(text)));
@@ -197,7 +202,7 @@ impl<'a> Compiler<'a> {
                     Operador::Mult | Operador::MultAtrib => self.op(OpCode::Mul),
                     Operador::Div | Operador::DivAtrib => self.op(OpCode::Div),
 
-                    Operador::Resto | Operador::RestoAtrib => todo!(),
+                    Operador::Resto | Operador::RestoAtrib => self.op(OpCode::Rem),
                     Operador::Exp | Operador::ExpAtrib => todo!(),
 
                     Operador::Atrib => {}
@@ -230,7 +235,10 @@ pub fn execute_program(program: Program) {
 
     let mut vm = vm::LinaVm::new(&compiler.bytecode, &compiler.constants);
 
-    vm.run();
+    match vm.run() {
+        Ok(_) => {},
+        Err(err) => eprintln!("{err}"),
+    };
 }
 
 #[test]
@@ -258,5 +266,8 @@ fn test() {
 
     let mut vm = vm::LinaVm::new(&compiler.bytecode, &compiler.constants);
 
-    vm.run();
+    match vm.run() {
+        Ok(_) => {},
+        Err(err) => eprintln!("{err}"),
+    };
 }
