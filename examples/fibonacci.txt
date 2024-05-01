@@ -1,15 +1,15 @@
-programa fibonacci
+programa Fibonacci
 
-inteiro x := 0
+texto x := 0
 inteiro y := 1
 inteiro i := 0
 
-saida := x
+saida := "fib(0) = " + x
 
-enquanto i <= 20 repetir
+enquanto i < 30 repetir
     inteiro z := x + y
     x := y
     y := z
     i += 1
-    saida := x
+    saida := "fib(" + i + ") = " + x
 fim

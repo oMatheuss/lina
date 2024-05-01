@@ -1,3 +1,5 @@
+programa Enquanto
+
 seja foo := 1
 
 enquanto foo < 5 repetir

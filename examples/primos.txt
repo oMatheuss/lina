@@ -1,0 +1,9 @@
+programa Primos
+
+inteiro x = 2
+
+enquanto x < 100 repetir
+    inteiro y = x - 1
+    enquanto y > 1 e x % y > 0 repetir y -= 1 fim
+    se y = 1 entao saida := x fim
+fim

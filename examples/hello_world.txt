@@ -1,1 +1,2 @@
-imprima "Hello, World!"
+programa HelloWorld
+saida := "Hello, World!"
