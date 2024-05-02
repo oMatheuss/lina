@@ -29,18 +29,20 @@ impl<'a> Compiler<'a> {
         self.bytecode.extend(usize::to_ne_bytes(addr));
     }
 
-    fn op_global_store(&mut self, addr: usize) {
+    fn op_store(&mut self, addr: usize) {
         self.bytecode.push(OpCode::Store as u8);
         self.bytecode.extend(usize::to_ne_bytes(addr));
     }
 
-    fn op_global_load(&mut self, addr: usize) {
+    fn op_load(&mut self, addr: usize) {
         self.bytecode.push(OpCode::Load as u8);
         self.bytecode.extend(usize::to_ne_bytes(addr));
     }
 
     fn push_offset(&mut self, offset: isize) {
-        self.bytecode.extend(isize::to_ne_bytes(offset));
+        // include itself on push
+        const SIZE: isize = isize::BITS as isize / 8;
+        self.bytecode.extend(isize::to_ne_bytes(offset + (SIZE * offset.signum())));
     }
 
     fn insert_offset(&mut self, offset: isize, pos: usize) {
@@ -105,7 +107,7 @@ impl<'a> Compiler<'a> {
             } => {
                 let addr = self.set_var(ident);
                 self.compile_expr(expr);
-                self.op_global_store(addr);
+                self.op_store(addr);
             }
             SyntaxTree::SeStmt { expr, block } => {
                 self.compile_expr(expr);
@@ -122,7 +124,8 @@ impl<'a> Compiler<'a> {
                 self.insert_offset(jmp_offset, jmp_offset_pos); // jump over the block
             }
             SyntaxTree::EnquantoStmt { expr, block } => {
-                let expr_start = self.bytecode.len(); // start while expression
+                let start = self.bytecode.len(); // start while expression
+
                 self.compile_expr(expr);
                 self.op(OpCode::JmpF);
 
@@ -133,18 +136,44 @@ impl<'a> Compiler<'a> {
                 self.compile_block(block);
                 self.op(OpCode::Jmp);
 
-                let jmp_offset_pos = self.bytecode.len();
-                self.push_offset(0);
                 let end = self.bytecode.len(); //  end while expression
-
-                let jmp_offset = (end - expr_start) as isize; // jmp will go back to expr evaluation
-                self.insert_offset(-jmp_offset, jmp_offset_pos);
+                let jmp_offset = (end - start) as isize;
+                self.push_offset(-jmp_offset); // jmp will go back to expr evaluation
 
                 let end = self.bytecode.len();
                 let jmp_offset = (end - block_start) as isize; // this will skip the block and jmp
                 self.insert_offset(jmp_offset, jmpf_offset_pos);
             }
-            SyntaxTree::ParaStmt { ident, expr, block } => todo!(),
+            SyntaxTree::ParaStmt { ident, limit, block } => {
+                let addr = self.get_var(ident);
+                let start = self.bytecode.len();
+
+                self.op_load(addr);
+                self.compile_literal(limit);
+                self.op(OpCode::LE);
+                self.op(OpCode::JmpF);
+
+                let jmp_offset_pos = self.bytecode.len();
+                self.push_offset(0);
+
+                let block_start = self.bytecode.len();
+                self.compile_block(block);
+
+                self.op_load(addr);
+                self.compile_literal(&Literal::Numero(1.0));
+                self.op(OpCode::Add);
+                self.op_store(addr);
+
+                self.op(OpCode::Jmp);
+
+                let end = self.bytecode.len();
+                let jmp_offset = (end - start) as isize;
+                self.push_offset(-jmp_offset);
+
+                let end = self.bytecode.len();
+                let jmp_offset = (end - block_start) as isize;
+                self.insert_offset(jmp_offset, jmp_offset_pos)
+            },
             SyntaxTree::Expr(expr) => {
                 self.compile_expr(expr);
             }
@@ -155,29 +184,32 @@ impl<'a> Compiler<'a> {
         }
     }
 
+    pub fn compile_literal(&mut self, literal: &Literal) {
+        let value = match *literal {
+            Literal::Numero(number) => LinaValue::Float32(number),
+            Literal::Texto(text) => LinaValue::String(String::from(text)),
+            Literal::Booleano(boolean) => LinaValue::Boolean(boolean),
+            Literal::Nulo => todo!(),
+        };
+
+        let find = self.constants.iter().position(|v| *v == value);
+        let addr = match find {
+            Some(i) => i,
+            None => {
+                self.constants.push(value);
+                self.constants.len() - 1
+            },
+        };
+
+        self.op_const(addr);
+    }
+
     pub fn compile_expr(&mut self, expr: &Expression) {
         match expr {
-            Expression::Literal(literal) => {
-                let addr = self.constants.len();
-
-                match *literal {
-                    Literal::Numero(number) => {
-                        self.constants.push(LinaValue::Float32(number));
-                    }
-                    Literal::Texto(text) => {
-                        self.constants.push(LinaValue::String(String::from(text)));
-                    }
-                    Literal::Booleano(boolean) => {
-                        self.constants.push(LinaValue::Boolean(boolean));
-                    }
-                    Literal::Nulo => todo!(),
-                };
-
-                self.op_const(addr);
-            }
+            Expression::Literal(literal) => self.compile_literal(literal),
             Expression::Identifier(identifier) => {
                 let addr = self.get_var(identifier);
-                self.op_global_load(addr);
+                self.op_load(addr);
             }
             Expression::BinOp { ope, lhs, rhs } => {
                 // Atrib (:=) does not need a left hand side
@@ -221,7 +253,7 @@ impl<'a> Compiler<'a> {
                         unreachable!()
                     };
                     let addr = self.get_var(identifier);
-                    self.op_global_store(addr);
+                    self.op_store(addr);
                     //self.op_global_load(addr);
                 }
             }

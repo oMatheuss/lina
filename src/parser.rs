@@ -3,7 +3,7 @@ use std::mem;
 use std::vec::IntoIter;
 
 use crate::syntax::{Block, Expression, Program, SyntaxTree, Type};
-use crate::token::{Delimitador, OpAssoc, OpInfo, Operador, Token, TokenDef, TokenPos};
+use crate::token::{Delimitador, Literal, OpAssoc, OpInfo, Operador, Token, TokenDef, TokenPos};
 
 #[derive(Debug)]
 pub struct SyntaxError {
@@ -73,6 +73,18 @@ impl<'a> Parser<'a> {
         }
     }
 
+    fn consume_literal(&mut self) -> Result<Literal<'a>> {
+        let TokenDef { kind, position } = self.advance()?;
+        if let Token::Literal(literal) = kind {
+            Ok(literal)
+        } else {
+            Err(SyntaxError {
+                pos: position,
+                msg: format!("esperado literal, encontrou {:?}", kind),
+            })
+        }
+    }
+
     fn consume_operator(&mut self) -> Result<Operador> {
         let TokenDef { kind, position } = self.advance()?;
         if let Token::Operador(operator) = kind {
@@ -136,10 +148,10 @@ impl<'a> Parser<'a> {
                 self.consume_invariant(Token::Para)?;
                 let ident = self.consume_identifier()?;
                 self.consume_invariant(Token::Ate)?;
-                let expr = self.parse_expression(1)?;
+                let limit = self.consume_literal()?;
                 self.consume_invariant(Token::Repetir)?;
                 let block = self.parse_block()?;
-                SyntaxTree::ParaStmt { ident, expr, block }
+                SyntaxTree::ParaStmt { ident, limit, block }
             }
             Token::Funcao => todo!(),
             Token::Retorne => todo!(),

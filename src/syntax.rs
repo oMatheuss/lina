@@ -37,7 +37,7 @@ pub enum SyntaxTree<'a> {
     },
     ParaStmt {
         ident: &'a str,
-        expr: Expression<'a>,
+        limit: Literal<'a>,
         block: Block<'a>,
     },
 }
@@ -99,7 +99,7 @@ impl<'a> Display for SyntaxTree<'a> {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         match self {
             SyntaxTree::Assign {
-                pos,
+                pos: _,
                 vtype,
                 ident,
                 expr,
@@ -116,8 +116,8 @@ impl<'a> Display for SyntaxTree<'a> {
                 write!(f, "{block}")?;
                 writeln!(f, "fim")
             }
-            SyntaxTree::ParaStmt { ident, expr, block } => {
-                writeln!(f, "para {ident}, {expr} faca")?;
+            SyntaxTree::ParaStmt { ident, limit, block } => {
+                writeln!(f, "para {ident} ate {limit} repetir")?;
                 write!(f, "{block}")?;
                 writeln!(f, "fim")
             }
