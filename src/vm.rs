@@ -14,6 +14,14 @@ pub enum OpCode {
     Div,
     Rem,
 
+    Or,
+    And,
+
+    // TODO
+    // Xor,
+    // Shl,
+    // Neg,
+
     Jmp,
     JmpT,
     JmpF,
@@ -382,6 +390,42 @@ impl<'a> LinaVm<'a> {
                     lhs
                 )))?,
             },
+            OpCode::Or => match lhs {
+                LinaValue::Int32(lhs) => {
+                    let rhs: i32 = rhs.try_into()?;
+                    (lhs | rhs).into()
+                }
+                LinaValue::Boolean(lhs) => {
+                    let rhs: bool = rhs.try_into()?;
+                    (lhs | rhs).into()
+                },
+                LinaValue::Address(lhs) => {
+                    let rhs: usize = rhs.try_into()?;
+                    (lhs | rhs).into()
+                }
+                _ => Err(TypeError(format!(
+                    "operacao % não implementada para {:?}",
+                    lhs
+                )))?,
+            }
+            OpCode::And => match lhs {
+                LinaValue::Int32(lhs) => {
+                    let rhs: i32 = rhs.try_into()?;
+                    (lhs & rhs).into()
+                }
+                LinaValue::Boolean(lhs) => {
+                    let rhs: bool = rhs.try_into()?;
+                    (lhs & rhs).into()
+                },
+                LinaValue::Address(lhs) => {
+                    let rhs: usize = rhs.try_into()?;
+                    (lhs & rhs).into()
+                }
+                _ => Err(TypeError(format!(
+                    "operacao % não implementada para {:?}",
+                    lhs
+                )))?,
+            }
             OpCode::Eq => (lhs == rhs).into(),
             OpCode::NE => (lhs != rhs).into(),
             OpCode::LT => match lhs {
@@ -487,6 +531,8 @@ impl<'a> LinaVm<'a> {
                 | OpCode::Mul
                 | OpCode::Div
                 | OpCode::Rem
+                | OpCode::Or
+                | OpCode::And
                 | OpCode::Eq
                 | OpCode::NE
                 | OpCode::LT

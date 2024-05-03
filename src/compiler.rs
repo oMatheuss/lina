@@ -226,8 +226,8 @@ impl<'a> Compiler<'a> {
                     Operador::Igual => self.op(OpCode::Eq),
                     Operador::Diferente => self.op(OpCode::NE),
 
-                    Operador::E => todo!(),
-                    Operador::Ou => todo!(),
+                    Operador::E => self.op(OpCode::And),
+                    Operador::Ou => self.op(OpCode::Or),
 
                     Operador::Adic | Operador::AdicAtrib => self.op(OpCode::Add),
                     Operador::Subt | Operador::SubtAtrib => self.op(OpCode::Sub),
