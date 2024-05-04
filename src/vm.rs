@@ -7,6 +7,7 @@ pub enum OpCode {
 
     Const,
     Dup,
+    Pop,
 
     Add,
     Sub,
@@ -21,7 +22,6 @@ pub enum OpCode {
     // Xor,
     // Shl,
     // Neg,
-
     Jmp,
     JmpT,
     JmpF,
@@ -398,7 +398,7 @@ impl<'a> LinaVm<'a> {
                 LinaValue::Boolean(lhs) => {
                     let rhs: bool = rhs.try_into()?;
                     (lhs | rhs).into()
-                },
+                }
                 LinaValue::Address(lhs) => {
                     let rhs: usize = rhs.try_into()?;
                     (lhs | rhs).into()
@@ -407,7 +407,7 @@ impl<'a> LinaVm<'a> {
                     "operacao % não implementada para {:?}",
                     lhs
                 )))?,
-            }
+            },
             OpCode::And => match lhs {
                 LinaValue::Int32(lhs) => {
                     let rhs: i32 = rhs.try_into()?;
@@ -416,7 +416,7 @@ impl<'a> LinaVm<'a> {
                 LinaValue::Boolean(lhs) => {
                     let rhs: bool = rhs.try_into()?;
                     (lhs & rhs).into()
-                },
+                }
                 LinaValue::Address(lhs) => {
                     let rhs: usize = rhs.try_into()?;
                     (lhs & rhs).into()
@@ -425,7 +425,7 @@ impl<'a> LinaVm<'a> {
                     "operacao % não implementada para {:?}",
                     lhs
                 )))?,
-            }
+            },
             OpCode::Eq => (lhs == rhs).into(),
             OpCode::NE => (lhs != rhs).into(),
             OpCode::LT => match lhs {
@@ -525,6 +525,7 @@ impl<'a> LinaVm<'a> {
                     self.push(top.clone());
                     self.push(top);
                 }
+                OpCode::Pop => _ = self.pop(),
 
                 OpCode::Add
                 | OpCode::Sub
