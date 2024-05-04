@@ -116,7 +116,11 @@ impl<'a> Display for SyntaxTree<'a> {
                 write!(f, "{block}")?;
                 writeln!(f, "fim")
             }
-            SyntaxTree::ParaStmt { ident, limit, block } => {
+            SyntaxTree::ParaStmt {
+                ident,
+                limit,
+                block,
+            } => {
                 writeln!(f, "para {ident} ate {limit} repetir")?;
                 write!(f, "{block}")?;
                 writeln!(f, "fim")

@@ -42,7 +42,8 @@ impl<'a> Compiler<'a> {
     fn push_offset(&mut self, offset: isize) {
         // include itself on push
         const SIZE: isize = isize::BITS as isize / 8;
-        self.bytecode.extend(isize::to_ne_bytes(offset + (SIZE * offset.signum())));
+        let total = offset + (SIZE * offset.signum());
+        self.bytecode.extend(isize::to_ne_bytes(total));
     }
 
     fn insert_offset(&mut self, offset: isize, pos: usize) {
@@ -76,8 +77,8 @@ impl<'a> Compiler<'a> {
 
     fn get_var(&mut self, name: &str) -> usize {
         for scope in self.scopes.iter().rev() {
-            if let Some(i) = scope.get(name) {
-                return *i;
+            if let Some(addr) = scope.get(name) {
+                return *addr;
             }
         }
 
@@ -144,7 +145,11 @@ impl<'a> Compiler<'a> {
                 let jmp_offset = (end - block_start) as isize; // this will skip the block and jmp
                 self.insert_offset(jmp_offset, jmpf_offset_pos);
             }
-            SyntaxTree::ParaStmt { ident, limit, block } => {
+            SyntaxTree::ParaStmt {
+                ident,
+                limit,
+                block,
+            } => {
                 let addr = self.get_var(ident);
                 let start = self.bytecode.len();
 
@@ -173,9 +178,10 @@ impl<'a> Compiler<'a> {
                 let end = self.bytecode.len();
                 let jmp_offset = (end - block_start) as isize;
                 self.insert_offset(jmp_offset, jmp_offset_pos)
-            },
+            }
             SyntaxTree::Expr(expr) => {
                 self.compile_expr(expr);
+                self.op(OpCode::Pop);
             }
             SyntaxTree::Print(expr) => {
                 self.compile_expr(expr);
@@ -198,7 +204,7 @@ impl<'a> Compiler<'a> {
             None => {
                 self.constants.push(value);
                 self.constants.len() - 1
-            },
+            }
         };
 
         self.op_const(addr);
@@ -240,21 +246,13 @@ impl<'a> Compiler<'a> {
                     Operador::Atrib => {}
                 };
 
-                let is_atrib = *ope == Operador::Atrib
-                    || *ope == Operador::AdicAtrib
-                    || *ope == Operador::SubtAtrib
-                    || *ope == Operador::MultAtrib
-                    || *ope == Operador::DivAtrib
-                    || *ope == Operador::RestoAtrib
-                    || *ope == Operador::ExpAtrib;
-
-                if is_atrib {
+                if ope.is_atrib() {
                     let Expression::Identifier(identifier) = *lhs.to_owned() else {
-                        unreachable!()
+                        panic!("ERRO: lado esquerdo de uma atribuição deve ser um identificador");
                     };
+                    self.op(OpCode::Dup);
                     let addr = self.get_var(identifier);
                     self.op_store(addr);
-                    //self.op_global_load(addr);
                 }
             }
         }
@@ -268,7 +266,7 @@ pub fn execute_program(program: Program) {
     let mut vm = vm::LinaVm::new(&compiler.bytecode, &compiler.constants);
 
     match vm.run() {
-        Ok(_) => {},
+        Ok(_) => {}
         Err(err) => eprintln!("{err}"),
     };
 }
@@ -299,7 +297,7 @@ fn test() {
     let mut vm = vm::LinaVm::new(&compiler.bytecode, &compiler.constants);
 
     match vm.run() {
-        Ok(_) => {},
+        Ok(_) => {}
         Err(err) => eprintln!("{err}"),
     };
 }

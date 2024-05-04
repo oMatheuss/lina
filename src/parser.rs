@@ -151,7 +151,11 @@ impl<'a> Parser<'a> {
                 let limit = self.consume_literal()?;
                 self.consume_invariant(Token::Repetir)?;
                 let block = self.parse_block()?;
-                SyntaxTree::ParaStmt { ident, limit, block }
+                SyntaxTree::ParaStmt {
+                    ident,
+                    limit,
+                    block,
+                }
             }
             Token::Funcao => todo!(),
             Token::Retorne => todo!(),
