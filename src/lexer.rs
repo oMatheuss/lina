@@ -102,7 +102,7 @@ impl<'a> Lexer<'a> {
         &self.input[start..=self.position]
     }
 
-    fn consume_number(&mut self) -> Result<&'a str> {
+    fn consume_number(&mut self) -> Result<Literal<'a>> {
         let start = self.position;
         let mut state: u8 = 1;
 
@@ -136,15 +136,18 @@ impl<'a> Lexer<'a> {
                 _ => unreachable!(),
             }
         }
+        
+        let string = &self.input[start..self.position];
 
-        if state == 2 {
-            return self.new_error("esperado número após ponto (.)");
+        match state {
+            1 => Ok(Literal::Inteiro(string.parse().unwrap())),
+            2 => self.new_error("esperado número após ponto (.)"),
+            3 => Ok(Literal::Decimal(string.parse().unwrap())),
+            _ => unreachable!()
         }
-
-        Ok(&self.input[start..self.position])
     }
 
-    fn consume_string(&mut self) -> Result<&'a str> {
+    fn consume_string(&mut self) -> Result<Literal<'a>> {
         let mut state: u8 = 1;
         self.next_char();
 
@@ -166,7 +169,7 @@ impl<'a> Lexer<'a> {
         let result = &self.input[start..self.position];
         self.next_char();
 
-        Ok(result)
+        Ok(Literal::Texto(result))
     }
 
     fn next_token(&mut self) -> Result<Option<TokenDef<'a>>> {
@@ -181,10 +184,10 @@ impl<'a> Lexer<'a> {
         match c {
             '0'..='9' => {
                 // match for number literal
-                let num = self.consume_number()?.parse().unwrap();
+                let literal = self.consume_number()?;
 
                 Ok(Some(TokenDef {
-                    kind: Token::Literal(Literal::Numero(num)),
+                    kind: Token::Literal(literal),
                     position,
                 }))
             }
@@ -252,7 +255,7 @@ impl<'a> Lexer<'a> {
             '"' => {
                 let val = self.consume_string()?;
                 Ok(Some(TokenDef {
-                    kind: Token::Literal(Literal::Texto(val)),
+                    kind: Token::Literal(val),
                     position,
                 }))
             }

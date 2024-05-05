@@ -176,7 +176,8 @@ impl Display for Operador {
 
 #[derive(Debug, PartialEq, Clone)]
 pub enum Literal<'a> {
-    Numero(f32),
+    Decimal(f32),
+    Inteiro(i32),
     Texto(&'a str),
     Booleano(bool),
     Nulo,
@@ -185,7 +186,8 @@ pub enum Literal<'a> {
 impl Display for Literal<'_> {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         match self {
-            Literal::Numero(number) => write!(f, "{}", number),
+            Literal::Decimal(number) => write!(f, "{}", number),
+            Literal::Inteiro(number) => write!(f, "{}", number),
             Literal::Texto(string) => write!(f, "{}", string),
             Literal::Booleano(boolean) => write!(f, "{}", boolean),
             Literal::Nulo => write!(f, "nulo"),

@@ -165,7 +165,7 @@ impl<'a> Compiler<'a> {
                 self.compile_block(block);
 
                 self.op_load(addr);
-                self.compile_literal(&Literal::Numero(1.0));
+                self.compile_literal(&Literal::Decimal(1.0));
                 self.op(OpCode::Add);
                 self.op_store(addr);
 
@@ -192,7 +192,8 @@ impl<'a> Compiler<'a> {
 
     pub fn compile_literal(&mut self, literal: &Literal) {
         let value = match *literal {
-            Literal::Numero(number) => LinaValue::Float32(number),
+            Literal::Decimal(number) => LinaValue::Float32(number),
+            Literal::Inteiro(number) => LinaValue::Int32(number),
             Literal::Texto(text) => LinaValue::String(String::from(text)),
             Literal::Booleano(boolean) => LinaValue::Boolean(boolean),
             Literal::Nulo => todo!(),
