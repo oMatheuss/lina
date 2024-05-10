@@ -1,9 +1,9 @@
 programa Adicao
 
-seja c := "hello, "
+texto c := "hello, "
 c += "world"
 
-seja d := 1
+real d := 1
 d += 2 + 0.14
 
 saida := "resultado: " + d

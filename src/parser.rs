@@ -216,12 +216,10 @@ impl<'a> Parser<'a> {
             };
 
             if ope.is_atrib() {
-                if let Expression::Literal(..) = lhs {
-                    self.new_error(
-                        "lado esquerdo de um operador de atribuição não pode ser um literal",
-                        pos,
-                    )?;
-                }
+                let Expression::Identifier(..) = lhs else {
+                    let message = "lado esquerdo de um operador de atribuição deve ser um identificador";
+                    self.new_error(message, pos)?
+                };
             }
 
             let rhs = self.parse_expression(min_prec)?;
