@@ -297,7 +297,7 @@ fn test() {
 
     let mut vm = vm::LinaVm::new(&compiler.bytecode, &compiler.constants);
 
-    match vm.run() {
+    match vm.decompile() {
         Ok(_) => {}
         Err(err) => eprintln!("{err}"),
     };

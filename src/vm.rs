@@ -1,4 +1,5 @@
 use std::fmt::Display;
+use std::io::Write;
 
 #[repr(u8)]
 #[derive(Debug)]
@@ -41,6 +42,39 @@ pub enum OpCode {
 
     Call,
     Return,
+}
+
+impl Display for OpCode {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        match self {
+            OpCode::Halt => write!(f, "HALT"),
+            OpCode::Const => write!(f, "CONST"),
+            OpCode::Dup => write!(f, "DUP"),
+            OpCode::Pop => write!(f, "POP"),
+            OpCode::Add => write!(f, "ADD"),
+            OpCode::Sub => write!(f, "SUB"),
+            OpCode::Mul => write!(f, "MUL"),
+            OpCode::Div => write!(f, "DIV"),
+            OpCode::Rem => write!(f, "REM"),
+            OpCode::Or => write!(f, "OR"),
+            OpCode::And => write!(f, "AND"),
+            OpCode::Jmp => write!(f, "JMP"),
+            OpCode::JmpT => write!(f, "JMPT"),
+            OpCode::JmpF => write!(f, "JMPF"),
+            OpCode::Eq => write!(f, "EQ"),
+            OpCode::NE => write!(f, "NE"),
+            OpCode::LT => write!(f, "LT"),
+            OpCode::GT => write!(f, "GT"),
+            OpCode::LE => write!(f, "LE"),
+            OpCode::GE => write!(f, "GE"),
+            OpCode::Read => write!(f, "READ"),
+            OpCode::Write => write!(f, "WRITE"),
+            OpCode::Load => write!(f, "LOAD"),
+            OpCode::Store => write!(f, "STORE"),
+            OpCode::Call => write!(f, "CALL"),
+            OpCode::Return => write!(f, "RETURN"),
+        }
+    }
 }
 
 #[derive(Debug)]
@@ -210,6 +244,7 @@ impl Display for LinaValue {
 pub enum RuntimeError {
     CodeError(CodeError),
     TypeError(TypeError),
+    IoError(std::io::Error)
 }
 
 impl From<TypeError> for RuntimeError {
@@ -224,11 +259,18 @@ impl From<CodeError> for RuntimeError {
     }
 }
 
+impl From<std::io::Error> for RuntimeError {
+    fn from(value: std::io::Error) -> Self {
+        Self::IoError(value)
+    }
+}
+
 impl Display for RuntimeError {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         match self {
             RuntimeError::CodeError(err) => write!(f, "{err}"),
             RuntimeError::TypeError(err) => write!(f, "{err}"),
+            RuntimeError::IoError(err) => write!(f, "{err}")
         }
     }
 }
@@ -509,6 +551,8 @@ impl<'a> LinaVm<'a> {
     }
 
     pub fn run(&mut self) -> VmResult {
+        let mut lock = std::io::stdout().lock();
+
         loop {
             let opcode: OpCode = self.next_byte().try_into()?;
 
@@ -579,9 +623,51 @@ impl<'a> LinaVm<'a> {
 
                 OpCode::Write => {
                     let value = self.pop();
-                    println!("{value}");
+                    writeln!(lock, "{value}")?;
                 }
                 OpCode::Read => todo!(),
+            }
+        }
+    }
+
+    pub fn decompile(&mut self) -> VmResult {
+        loop {
+            let mut lock = std::io::stdout().lock();
+            let opcode: OpCode = self.next_byte().try_into()?;
+            
+            match opcode {
+                OpCode::Halt => {
+                    writeln!(lock, "{opcode}")?;
+                    return Ok(());
+                },
+                OpCode::Const => {
+                    let index = self.next_address();
+                    let value = &self.constants[index];
+                    writeln!(lock, "{opcode}\t{index:#02x}\t{value}")?;
+                },
+                OpCode::Jmp => {
+                    let index = self.next_offset();
+                    writeln!(lock, "{opcode}\t{index}")?;
+                },
+                OpCode::JmpT => {
+                    let index = self.next_offset();
+                    writeln!(lock, "{opcode}\t{index}")?;
+                },
+                OpCode::JmpF => {
+                    let index = self.next_offset();
+                    writeln!(lock, "{opcode}\t{index}")?;
+                },
+                OpCode::Load => {
+                    let index = self.next_address();
+                    writeln!(lock, "{opcode}\t{index:#02x}")?;
+                },
+                OpCode::Store => {
+                    let index = self.next_address();
+                    writeln!(lock, "{opcode}\t{index:#02x}")?;
+                },
+                OpCode::Call => todo!(),
+                OpCode::Return => todo!(),
+                _ => writeln!(lock, "{opcode}")?,
             }
         }
     }
