@@ -163,7 +163,10 @@ impl<'a> Parser<'a> {
                 let expression = self.parse_expression(1)?;
                 SyntaxTree::Expr(expression)
             }
-            _ => self.new_error("token inesperado", position)?,
+            _ => {
+                let message = &format!("token inesperado {}", token_ref.kind);
+                self.new_error(message, position)?
+            },
         };
 
         Ok(stmt)
