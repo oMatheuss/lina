@@ -631,8 +631,8 @@ impl<'a> LinaVm<'a> {
     }
 
     pub fn decompile(&mut self) -> VmResult {
+        let mut lock = std::io::stdout().lock();
         loop {
-            let mut lock = std::io::stdout().lock();
             let opcode: OpCode = self.next_byte().try_into()?;
             
             match opcode {
