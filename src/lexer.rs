@@ -137,7 +137,11 @@ impl<'a> Lexer<'a> {
             }
         }
         
-        let string = &self.input[start..self.position];
+        let string = if let Some(..) = self.curr_char {
+            &self.input[start..self.position]
+        } else {
+            &self.input[start..=self.position]
+        };
 
         match state {
             1 => Ok(Literal::Inteiro(string.parse().unwrap())),
