@@ -1,6 +1,6 @@
 programa Fibonacci
 
-texto x := 0
+inteiro x := 0
 inteiro y := 1
 inteiro i := 1
 
