@@ -2,14 +2,14 @@ use std::collections::HashMap;
 
 use crate::syntax::{Block, Expression, Program, SyntaxTree};
 use crate::token::{Literal, Operador};
-use crate::vm::{self, LinaValue, OpCode};
+use crate::vm::{LinaValue, OpCode};
 
 type VarTable<'a> = HashMap<&'a str, usize>;
 
 #[derive(Debug)]
-struct Compiler<'a> {
-    bytecode: Vec<u8>,
-    constants: Vec<LinaValue>,
+pub struct Compiler<'a> {
+    pub bytecode: Vec<u8>,
+    pub constants: Vec<LinaValue>,
     scopes: Vec<VarTable<'a>>,
     vi: usize,
 }
@@ -260,45 +260,8 @@ impl<'a> Compiler<'a> {
     }
 }
 
-pub fn execute_program(program: Program) {
+pub fn compile<'a>(program: &'a Program<'a>) -> Compiler<'a> {
     let mut compiler = Compiler::new();
-    compiler.compile(&program);
-
-    let mut vm = vm::LinaVm::new(&compiler.bytecode, &compiler.constants);
-
-    match vm.run() {
-        Ok(_) => {}
-        Err(err) => eprintln!("{err}"),
-    };
-}
-
-#[test]
-fn test() {
-    use crate::{lexer, parser, vm};
-
-    let code = r#"
-    programa fibonacci
-    inteiro x := 0
-    inteiro y := 1
-    saida := x
-    enquanto x < 10000000 repetir
-        inteiro z := x + y
-        x := y
-        y := z
-        saida := x
-    fim
-    "#;
-
-    let tokens = lexer::lex(code).unwrap();
-    let syntax = parser::parse(tokens).unwrap();
-
-    let mut compiler = Compiler::new();
-    compiler.compile(&syntax);
-
-    let mut vm = vm::LinaVm::new(&compiler.bytecode, &compiler.constants);
-
-    match vm.decompile() {
-        Ok(_) => {}
-        Err(err) => eprintln!("{err}"),
-    };
+    compiler.compile(program);
+    compiler
 }

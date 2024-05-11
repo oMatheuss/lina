@@ -1,8 +1,17 @@
 use std::env;
+use std::fmt::Error;
 use std::fs::File;
-use std::io::Read;
+use std::io::{Read, Write};
 
 use lina::run_code;
+
+struct Terminal(std::io::Stdout);
+
+impl std::fmt::Write for Terminal {
+    fn write_str(&mut self, s: &str) -> std::fmt::Result {
+        write!(self.0, "{s}").map_err(|_| Error::default())
+    }
+}
 
 fn main() {
     let mut code = String::new();
@@ -15,5 +24,7 @@ fn main() {
     file.read_to_string(&mut code)
         .expect("Erro ao ler o arquivo");
 
-    run_code(file_name.clone(), &code).expect("programa ser executado");
+    let stdout = std::io::stdout();
+
+    run_code(&code, &mut Terminal(stdout)).expect("programa ser executado");
 }

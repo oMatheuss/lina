@@ -1,3 +1,4 @@
+workspace = { members = ["web"] }
 [package]
 name = "lina"
 version = "0.0.1"

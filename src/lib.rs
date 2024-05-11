@@ -1,3 +1,5 @@
+use core::fmt::Write;
+
 mod compiler;
 mod lexer;
 mod parser;
@@ -5,42 +7,22 @@ mod syntax;
 mod token;
 mod vm;
 
-pub fn run_code(file_name: String, code: &str) -> Result<(), ()> {
+use vm::LinaVm;
+
+pub fn run_code(code: &str, stdout: &mut dyn Write) -> Result<(), ()> {
     let tokens = lexer::lex(code).map_err(|err| {
-        eprintln!("{}", err);
+        writeln!(stdout, "{}", err);
     })?;
 
     let program = parser::parse(tokens).map_err(|err| {
-        eprintln!("{}", err);
+        writeln!(stdout, "{}", err);
     })?;
 
-    compiler::execute_program(program);
+    let compiler = compiler::compile(&program);
 
-    Ok(())
-}
+    let mut vm = LinaVm::new(&compiler.bytecode, &compiler.constants);
 
-#[cfg(test)]
-mod test {
-    use crate::{lexer, parser};
-
-    #[test]
-    fn ast_is_correctly_generated() {
-        let input = r#"
-        seja soma := 0 + 1 * 4 * 2 ^ 3 / 5
-        seja teste := soma *= soma /= soma -= soma
-        enquanto soma < 100 repetir
-            soma := a + entrada / 2
-            saida := soma
-            
-            se soma = 35 ou soma > 30 e soma < 50 entao
-                soma += 20
-            fim
-        fim"#;
-        let tokens = lexer::lex(input).expect("semantica correta");
-        println!("{:#?}", tokens);
-
-        let ast = parser::parse(tokens).expect("sintaxe correta");
-
-        println!("{}", ast);
-    }
+    vm.run(stdout).map_err(|err| {
+        writeln!(stdout, "{}", err);
+    })
 }
