@@ -6,7 +6,6 @@ import type { editor } from 'monaco-editor';
 
 const font = JetBrains_Mono({
   display: 'swap',
-  preload: true,
   style: 'normal',
   weight: '400',
   fallback: ['system-ui', 'monospace'],

@@ -1,6 +1,6 @@
 'use client';
 
-import * as monaco from 'monaco-editor';
+import * as monaco from 'monaco-editor/esm/vs/editor/editor.api';
 import { AUTOCOMPLETE, CONFIG, GRAMMAR } from '@/lib/lang-def';
 import { type CSSProperties, useEffect, useRef } from 'react';
 

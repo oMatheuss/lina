@@ -1,4 +1,4 @@
-import { languages, editor } from 'monaco-editor';
+import type { languages, editor } from 'monaco-editor';
 
 export const CONFIG: languages.LanguageConfiguration = {
   comments: {
@@ -170,17 +170,19 @@ export const AUTOCOMPLETE: languages.CompletionItemProvider = {
     const suggestions: languages.CompletionItem[] = [
       {
         label: 'se',
-        kind: languages.CompletionItemKind.Snippet,
+        kind: 27 as languages.CompletionItemKind.Snippet,
         insertText: 'se ${1:condicao} entao\n\t$0\nfim',
-        insertTextRules: languages.CompletionItemInsertTextRule.InsertAsSnippet,
+        insertTextRules:
+          4 as languages.CompletionItemInsertTextRule.InsertAsSnippet,
         documentation: 'Se-Entao',
         range: range,
       },
       {
         label: 'para',
-        kind: languages.CompletionItemKind.Snippet,
+        kind: 27 as languages.CompletionItemKind.Snippet,
         insertText: 'para ${1:var} ate ${2:lim} repetir\n\t$0\nfim',
-        insertTextRules: languages.CompletionItemInsertTextRule.InsertAsSnippet,
+        insertTextRules:
+          4 as languages.CompletionItemInsertTextRule.InsertAsSnippet,
         documentation: 'Para-Repetir',
         range: range,
       },
