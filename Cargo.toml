@@ -1,4 +1,6 @@
-workspace = { members = ["web"] }
+[workspace]
+members = ["lina-wasm"]
+
 [package]
 name = "lina"
 version = "0.0.1"

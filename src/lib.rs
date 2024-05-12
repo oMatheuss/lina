@@ -1,4 +1,4 @@
-use core::fmt::Write;
+use std::io::Write;
 
 mod compiler;
 mod lexer;

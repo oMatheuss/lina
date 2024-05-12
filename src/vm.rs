@@ -1,5 +1,5 @@
 use std::fmt::Display;
-use std::fmt::Write;
+use std::io::Write;
 
 #[repr(u8)]
 #[derive(Debug)]
@@ -244,7 +244,7 @@ impl Display for LinaValue {
 pub enum RuntimeError {
     CodeError(CodeError),
     TypeError(TypeError),
-    IoError(std::fmt::Error)
+    IoError(std::io::Error),
 }
 
 impl From<TypeError> for RuntimeError {
@@ -259,8 +259,8 @@ impl From<CodeError> for RuntimeError {
     }
 }
 
-impl From<std::fmt::Error> for RuntimeError {
-    fn from(value: std::fmt::Error) -> Self {
+impl From<std::io::Error> for RuntimeError {
+    fn from(value: std::io::Error) -> Self {
         Self::IoError(value)
     }
 }
@@ -270,7 +270,7 @@ impl Display for RuntimeError {
         match self {
             RuntimeError::CodeError(err) => write!(f, "{err}"),
             RuntimeError::TypeError(err) => write!(f, "{err}"),
-            RuntimeError::IoError(err) => write!(f, "{err}")
+            RuntimeError::IoError(err) => write!(f, "{err}"),
         }
     }
 }
@@ -631,37 +631,37 @@ impl<'a> LinaVm<'a> {
     pub fn decompile(&mut self, stdout: &mut dyn Write) -> VmResult {
         loop {
             let opcode: OpCode = self.next_byte().try_into()?;
-            
+
             match opcode {
                 OpCode::Halt => {
                     writeln!(stdout, "{opcode}")?;
                     return Ok(());
-                },
+                }
                 OpCode::Const => {
                     let index = self.next_address();
                     let value = &self.constants[index];
                     writeln!(stdout, "{opcode}\t{index:#02x}\t{value}")?;
-                },
+                }
                 OpCode::Jmp => {
                     let index = self.next_offset();
                     writeln!(stdout, "{opcode}\t{index}")?;
-                },
+                }
                 OpCode::JmpT => {
                     let index = self.next_offset();
                     writeln!(stdout, "{opcode}\t{index}")?;
-                },
+                }
                 OpCode::JmpF => {
                     let index = self.next_offset();
                     writeln!(stdout, "{opcode}\t{index}")?;
-                },
+                }
                 OpCode::Load => {
                     let index = self.next_address();
                     writeln!(stdout, "{opcode}\t{index:#02x}")?;
-                },
+                }
                 OpCode::Store => {
                     let index = self.next_address();
                     writeln!(stdout, "{opcode}\t{index:#02x}")?;
-                },
+                }
                 OpCode::Call => todo!(),
                 OpCode::Return => todo!(),
                 _ => writeln!(stdout, "{opcode}")?,
