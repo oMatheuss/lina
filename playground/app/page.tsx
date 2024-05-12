@@ -32,7 +32,7 @@ export default function Home() {
           <span className="inline align-middle">EXECUTAR</span>
         </button>
       </div>
-      <div className="grid grid-cols-2 gap-4">
+      <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
         <Editor
           onCreate={handleCreate}
           className="min-h-[500px] h-[calc(100dvh-6.5rem)] border-4 border-indigo-500"
