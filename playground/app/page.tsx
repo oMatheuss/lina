@@ -35,7 +35,7 @@ export default function Home() {
       <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
         <Editor
           onCreate={handleCreate}
-          className="min-h-[500px] h-[calc(100dvh-6.5rem)] border-4 border-indigo-500"
+          className="min-h-[500px] h-[calc(100dvh-6.5rem)] border-4 border-indigo-500 rounded-sm"
         />
         <Terminal />
       </div>
