@@ -285,8 +285,6 @@ pub struct LinaVm<'a> {
 
     stack: Vec<LinaValue>,      // operand stack
     constants: &'a [LinaValue], // constant pool
-
-    globals: Vec<LinaValue>,
 }
 
 impl<'a> LinaVm<'a> {
@@ -296,7 +294,6 @@ impl<'a> LinaVm<'a> {
             pc: 0,
             stack: Vec::with_capacity(512),
             constants,
-            globals: Vec::new(),
         }
     }
 
@@ -326,15 +323,15 @@ impl<'a> LinaVm<'a> {
     }
 
     fn store(&mut self, value: LinaValue, address: usize) {
-        while self.globals.len() < address + 1 {
-            self.globals.push(0.0.into());
+        while self.stack.len() < address + 1 {
+            self.stack.push(0.0.into());
         }
 
-        self.globals[address] = value;
+        self.stack[address] = value;
     }
 
     fn load(&mut self, address: usize) -> LinaValue {
-        self.globals[address].clone()
+        self.stack[address].clone()
     }
 
     fn binary_op(&mut self, op: OpCode) -> VmResult {
