@@ -3,12 +3,12 @@ programa Enquanto
 inteiro foo := 1
 
 enquanto foo < 5 repetir
-	inteiro bar := 5
+    inteiro bar := 5
 
-	enquanto bar > 1 repetir
-		saida := bar
-		bar -= foo
-	fim
+    enquanto bar > 1 repetir
+        saida := bar
+        bar -= foo
+    fim
 
-	foo += 1
+    foo += 1
 fim
