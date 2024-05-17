@@ -1,4 +1,4 @@
-use lina::run_code;
+use lina::{decompile_code, run_code};
 use std::io::{BufWriter, Write};
 use wasm_bindgen::prelude::*;
 
@@ -30,5 +30,17 @@ pub fn compile(code: &str) {
     let _ = match run_code(code, &mut terminal) {
         Ok(()) => writeln!(terminal, "compilação & execução finalizados com sucesso"),
         Err(()) => writeln!(terminal, "compilação & execução finalizados com erro"),
+    };
+}
+
+#[wasm_bindgen]
+pub fn decompile(code: &str) {
+    let mut terminal = BufWriter::new(Terminal);
+
+    terminal_clear();
+
+    let _ = match decompile_code(code, &mut terminal) {
+        Ok(()) => writeln!(terminal, "descompilação finalizada com sucesso"),
+        Err(()) => writeln!(terminal, "descompilação finalizada com erro"),
     };
 }

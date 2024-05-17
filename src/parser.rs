@@ -166,7 +166,7 @@ impl<'a> Parser<'a> {
             _ => {
                 let message = &format!("token inesperado {}", token_ref.kind);
                 self.new_error(message, position)?
-            },
+            }
         };
 
         Ok(stmt)
@@ -217,7 +217,8 @@ impl<'a> Parser<'a> {
 
             if ope.is_atrib() {
                 let Expression::Identifier(..) = lhs else {
-                    let message = "lado esquerdo de um operador de atribuição deve ser um identificador";
+                    let message =
+                        "lado esquerdo de um operador de atribuição deve ser um identificador";
                     self.new_error(message, pos)?
                 };
             }

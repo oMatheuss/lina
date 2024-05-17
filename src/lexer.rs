@@ -136,7 +136,7 @@ impl<'a> Lexer<'a> {
                 _ => unreachable!(),
             }
         }
-        
+
         let string = if let Some(..) = self.curr_char {
             &self.input[start..self.position]
         } else {
@@ -147,7 +147,7 @@ impl<'a> Lexer<'a> {
             1 => Ok(Literal::Inteiro(string.parse().unwrap())),
             2 => self.new_error("esperado número após ponto (.)"),
             3 => Ok(Literal::Decimal(string.parse().unwrap())),
-            _ => unreachable!()
+            _ => unreachable!(),
         }
     }
 

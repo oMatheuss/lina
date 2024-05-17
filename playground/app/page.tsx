@@ -2,9 +2,9 @@
 
 import { Editor } from '@/components/editor';
 import { Terminal } from '@/components/terminal';
-import { PlayIcon } from 'lucide-react';
+import { Binary, PlayIcon } from 'lucide-react';
 import type { editor } from 'monaco-editor';
-import init, { compile } from 'lina-wasm';
+import init, { compile, decompile } from 'lina-wasm';
 import { useRef } from 'react';
 
 export default function Home() {
@@ -17,19 +17,33 @@ export default function Home() {
     if (value) init().then(() => compile(value));
   };
 
+  const handleDecompile = () => {
+    const editor = editorRef.current;
+    if (editor === null) return;
+    const value = editor.getModel()?.getValue();
+    if (value) init().then(() => decompile(value));
+  };
+
   const handleCreate = (editor: editor.IStandaloneCodeEditor) => {
     editorRef.current = editor;
   };
 
   return (
     <main className="min-h-dvh mx-4 flex flex-col">
-      <div className="py-4">
+      <div className="py-4 space-x-4">
         <button
           onClick={handleCompile}
           className="h-10 rounded-sm bg-indigo-500 px-2 text-sm hover:bg-indigo-600 whitespace-nowrap"
         >
           <PlayIcon className="inline mr-2 align-middle" />
           <span className="inline align-middle">EXECUTAR</span>
+        </button>
+        <button
+          onClick={handleDecompile}
+          className="h-10 rounded-sm bg-indigo-500 px-2 text-sm hover:bg-indigo-600 whitespace-nowrap"
+        >
+          <Binary className="inline mr-2 align-middle" />
+          <span className="inline align-middle">DESCOMPILAR</span>
         </button>
       </div>
       <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
