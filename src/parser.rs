@@ -1,3 +1,4 @@
+use std::collections::HashMap;
 use std::iter::Peekable;
 use std::mem;
 use std::vec::IntoIter;
@@ -20,14 +21,23 @@ impl std::fmt::Display for SyntaxError {
 
 type Result<T> = std::result::Result<T, SyntaxError>;
 
+struct Symbol {
+    pos: TokenPos,
+    typ: Type,
+}
+
+type TokenTable<'a> = HashMap<&'a str, Symbol>;
+
 pub struct Parser<'a> {
     tokens: Peekable<IntoIter<TokenDef<'a>>>,
+    symbols: Vec<TokenTable<'a>>,
 }
 
 impl<'a> Parser<'a> {
     pub fn new(tokens: Vec<TokenDef<'a>>) -> Self {
         Parser {
             tokens: tokens.into_iter().peekable(),
+            symbols: vec![TokenTable::new()],
         }
     }
 
@@ -42,74 +52,84 @@ impl<'a> Parser<'a> {
         })
     }
 
-    fn new_error<T>(&self, message: &str, position: TokenPos) -> Result<T> {
-        Err(SyntaxError {
-            pos: position,
-            msg: String::from(message),
-        })
+    fn set_symbol(&mut self, name: &'a str, pos: TokenPos, typ: Type) {
+        let scope = self.symbols.last_mut().unwrap();
+        scope.insert(name, Symbol { pos, typ });
+    }
+
+    fn find_symbol(&mut self, name: &str) -> Option<&Symbol> {
+        self.symbols.iter().rev().find_map(|scope| scope.get(name))
+    }
+
+    fn enter_scope(&mut self) {
+        self.symbols.push(HashMap::new());
+    }
+
+    fn exit_scope(&mut self) {
+        self.symbols.pop();
     }
 
     fn consume_invariant(&mut self, expected: Token<'a>) -> Result<()> {
-        let TokenDef { kind, position } = self.advance()?;
-        if mem::discriminant(&kind) == mem::discriminant(&expected) {
+        let TokenDef { tok, pos } = self.advance()?;
+        if mem::discriminant(&tok) == mem::discriminant(&expected) {
             Ok(())
         } else {
             Err(SyntaxError {
-                pos: position,
-                msg: format!("esperado {}, encontrou {}", expected, kind),
+                pos,
+                msg: format!("esperado {}, encontrou {}", expected, tok),
             })
         }
     }
 
     fn consume_identifier(&mut self) -> Result<&'a str> {
-        let TokenDef { kind, position } = self.advance()?;
-        if let Token::Identificador(ident) = kind {
+        let TokenDef { tok, pos } = self.advance()?;
+        if let Token::Identificador(ident) = tok {
             Ok(ident)
         } else {
             Err(SyntaxError {
-                pos: position,
-                msg: format!("esperado identificador, encontrou {:?}", kind),
+                pos,
+                msg: format!("esperado identificador, encontrou {:?}", tok),
             })
         }
     }
 
     fn consume_literal(&mut self) -> Result<Literal<'a>> {
-        let TokenDef { kind, position } = self.advance()?;
-        if let Token::Literal(literal) = kind {
+        let TokenDef { tok, pos } = self.advance()?;
+        if let Token::Literal(literal) = tok {
             Ok(literal)
         } else {
             Err(SyntaxError {
-                pos: position,
-                msg: format!("esperado literal, encontrou {:?}", kind),
+                pos,
+                msg: format!("esperado literal, encontrou {:?}", tok),
             })
         }
     }
 
     fn consume_operator(&mut self) -> Result<Operador> {
-        let TokenDef { kind, position } = self.advance()?;
-        if let Token::Operador(operator) = kind {
+        let TokenDef { tok, pos } = self.advance()?;
+        if let Token::Operador(operator) = tok {
             Ok(operator)
         } else {
             Err(SyntaxError {
-                pos: position,
-                msg: format!("esperado operador, encontrou {:?}", kind),
+                pos,
+                msg: format!("esperado operador, encontrou {:?}", tok),
             })
         }
     }
 
     fn parse_statement(&mut self) -> Result<SyntaxTree<'a>> {
         let token_ref = self.peek().unwrap();
-        let position = token_ref.position.clone();
+        let pos = token_ref.pos.clone();
 
-        let stmt = match token_ref.kind {
+        let stmt = match token_ref.tok {
             Token::Seja | Token::Inteiro | Token::Real | Token::Booleano | Token::Texto => {
                 let decl = self.advance()?;
-                let ident = self.consume_identifier()?;
+                let idt = self.consume_identifier()?;
                 self.consume_invariant(Token::Operador(Operador::Atrib))?;
-                let expr = self.parse_expression(1)?;
+                let exp = self.parse_expression(1)?;
 
-                let vtype = match decl.kind {
-                    Token::Seja => todo!(),
+                let typ = match decl.tok {
+                    Token::Seja => exp.get_type(),
                     Token::Inteiro => Type::Integer,
                     Token::Real => Type::Real,
                     Token::Texto => Type::Text,
@@ -117,12 +137,9 @@ impl<'a> Parser<'a> {
                     _ => unreachable!(),
                 };
 
-                SyntaxTree::Assign {
-                    pos: position,
-                    ident,
-                    expr,
-                    vtype,
-                }
+                self.set_symbol(idt, pos.clone(), typ.clone());
+
+                SyntaxTree::Assign { pos, idt, exp, typ }
             }
             Token::Identificador("saida") => {
                 let _ = self.consume_identifier()?;
@@ -132,30 +149,26 @@ impl<'a> Parser<'a> {
             }
             Token::Enquanto => {
                 self.consume_invariant(Token::Enquanto)?;
-                let expr = self.parse_expression(1)?;
+                let exp = self.parse_expression(1)?;
                 self.consume_invariant(Token::Repetir)?;
-                let block = self.parse_block()?;
-                SyntaxTree::EnquantoStmt { expr, block }
+                let blk = self.parse_block()?;
+                SyntaxTree::EnquantoStmt { exp, blk }
             }
             Token::Se => {
                 self.consume_invariant(Token::Se)?;
-                let expr = self.parse_expression(1)?;
+                let exp = self.parse_expression(1)?;
                 self.consume_invariant(Token::Entao)?;
-                let block = self.parse_block()?;
-                SyntaxTree::SeStmt { expr, block }
+                let blk = self.parse_block()?;
+                SyntaxTree::SeStmt { exp, blk }
             }
             Token::Para => {
                 self.consume_invariant(Token::Para)?;
-                let ident = self.consume_identifier()?;
+                let idt = self.consume_identifier()?;
                 self.consume_invariant(Token::Ate)?;
-                let limit = self.consume_literal()?;
+                let lmt = self.consume_literal()?;
                 self.consume_invariant(Token::Repetir)?;
-                let block = self.parse_block()?;
-                SyntaxTree::ParaStmt {
-                    ident,
-                    limit,
-                    block,
-                }
+                let blk = self.parse_block()?;
+                SyntaxTree::ParaStmt { idt, lmt, blk }
             }
             Token::Funcao => todo!(),
             Token::Retorne => todo!(),
@@ -164,25 +177,136 @@ impl<'a> Parser<'a> {
                 SyntaxTree::Expr(expression)
             }
             _ => {
-                let message = &format!("token inesperado {}", token_ref.kind);
-                self.new_error(message, position)?
+                let msg = format!("token inesperado {}", token_ref.tok).into();
+                Err(SyntaxError { msg, pos })?
             }
         };
 
         Ok(stmt)
     }
 
+    fn parse_binop(
+        &mut self,
+        lhs: Expression<'a>,
+        rhs: Expression<'a>,
+        ope: Operador,
+    ) -> std::result::Result<Expression<'a>, String> {
+        let lhs_typ = lhs.get_type();
+        let rhs_typ = rhs.get_type();
+
+        use Operador::*;
+        use Type::*;
+
+        let mut left = lhs;
+        let mut right = rhs;
+
+        let result_typ = match ope {
+            MaiorQue | MenorQue | MaiorIgualQue | MenorIgualQue => match (&lhs_typ, &rhs_typ) {
+                (Integer, Integer) | (Integer, Real) | (Real, Integer) | (Real, Real) => Boolean,
+                _ => Err(format!(
+                    "operação {ope} não suportada entre {lhs_typ} e {rhs_typ}"
+                ))?,
+            },
+
+            Igual | Diferente => Boolean,
+
+            E | Ou => match (&lhs_typ, &rhs_typ) {
+                (Boolean, Boolean) | (Integer, Integer) => Boolean,
+                _ => Err(format!(
+                    "operação {ope} não suportada entre {lhs_typ} e {rhs_typ}"
+                ))?,
+            },
+
+            Adic | Subt | Mult | Div | Resto | Exp => match (&lhs_typ, &rhs_typ) {
+                (Integer, Integer) => Integer,
+                (Integer, Real) => {
+                    left = Expression::Cast(Box::new(left), Real);
+                    Real
+                }
+                (Integer, Text) => {
+                    left = Expression::Cast(Box::new(left), Text);
+                    Text
+                }
+                (Real, Real) => Real,
+                (Real, Integer) => {
+                    right = Expression::Cast(Box::new(right), Real);
+                    Real
+                }
+                (Real, Text) => {
+                    left = Expression::Cast(Box::new(left), Text);
+                    Text
+                }
+
+                (Text, Integer) | (Text, Real) | (Text, Text) | (Text, Boolean) => {
+                    right = Expression::Cast(Box::new(right), Text);
+                    Text
+                }
+
+                (Boolean, Text) => {
+                    left = Expression::Cast(Box::new(left), Text);
+                    Text
+                }
+
+                _ => Err(format!(
+                    "operação {ope} não suportada entre {lhs_typ} e {rhs_typ}"
+                ))?,
+            },
+
+            Atrib | AdicAtrib | SubtAtrib | MultAtrib | DivAtrib | RestoAtrib | ExpAtrib => {
+                match (&lhs_typ, &rhs_typ) {
+                    (Integer, Integer) => Integer,
+                    (Integer, Real) => {
+                        right = Expression::Cast(Box::new(right), Integer);
+                        Integer
+                    }
+
+                    (Real, Real) => Real,
+                    (Real, Integer) => {
+                        right = Expression::Cast(Box::new(right), Real);
+                        Real
+                    }
+
+                    (Text, Integer) | (Text, Real) | (Text, Text) | (Text, Boolean) => {
+                        right = Expression::Cast(Box::new(right), Text);
+                        Text
+                    }
+
+                    _ => Err(format!(
+                        "operação {ope} não suportada entre {lhs_typ} e {rhs_typ}"
+                    ))?,
+                }
+            }
+        };
+
+        Ok(Expression::BinOp {
+            typ: result_typ,
+            ope,
+            lhs: Box::new(left),
+            rhs: Box::new(right),
+        })
+    }
+
     fn parse_atom(&mut self) -> Result<Expression<'a>> {
-        let TokenDef { kind, position } = self.advance()?;
-        let expression = match kind {
-            Token::Identificador(ident) => Expression::Identifier(ident),
+        let TokenDef { tok, pos } = self.advance()?;
+        let expression = match tok {
+            Token::Identificador(idt) => {
+                let symb = self.find_symbol(idt).ok_or_else(|| SyntaxError {
+                    pos,
+                    msg: format!("variavel não definida {idt}"),
+                })?;
+
+                Expression::Identifier(idt, symb.typ.clone())
+            }
             Token::Literal(literal) => Expression::Literal(literal),
             Token::Delimitador(Delimitador::AParen) => {
                 let inner_expr = self.parse_expression(1)?;
                 self.consume_invariant(Token::Delimitador(Delimitador::FParen))?;
                 inner_expr
             }
-            _ => self.new_error("token inesperado", position)?,
+            _ => Err(SyntaxError {
+                pos,
+                msg: format!("token inesperado {tok}"),
+            })?,
         };
         Ok(expression)
     }
@@ -191,15 +315,11 @@ impl<'a> Parser<'a> {
         let mut lhs = self.parse_atom()?;
 
         loop {
-            let Some(TokenDef {
-                kind,
-                position: op_pos,
-            }) = self.peek()
-            else {
+            let Some(def_ope) = self.peek() else {
                 break;
             };
-            let pos = op_pos.clone();
-            let Token::Operador(ope) = kind else {
+
+            let Token::Operador(ope) = &def_ope.tok else {
                 break;
             };
             let OpInfo(prec, assoc) = ope.precedence();
@@ -208,6 +328,7 @@ impl<'a> Parser<'a> {
                 break;
             }
 
+            let pos = def_ope.pos.clone();
             let ope = self.consume_operator()?;
             let min_prec = if let OpAssoc::L = assoc {
                 prec + 1
@@ -215,21 +336,23 @@ impl<'a> Parser<'a> {
                 prec
             };
 
-            if ope.is_atrib() {
-                let Expression::Identifier(..) = lhs else {
-                    let message =
-                        "lado esquerdo de um operador de atribuição deve ser um identificador";
-                    self.new_error(message, pos)?
-                };
+            if let Expression::Identifier(idt, _) = lhs.clone() {
+                self.find_symbol(idt).ok_or_else(|| SyntaxError {
+                    pos: pos.clone(),
+                    msg: format!("variavel não definida {idt}"),
+                })?;
+            } else if ope.is_atrib() {
+                Err(SyntaxError {
+                    pos: pos.clone(),
+                    msg: format!("lado esquerdo do operador {ope} deve ser um identificador"),
+                })?
             }
 
             let rhs = self.parse_expression(min_prec)?;
 
-            lhs = Expression::BinOp {
-                ope,
-                lhs: Box::new(lhs),
-                rhs: Box::new(rhs),
-            };
+            lhs = self
+                .parse_binop(lhs, rhs, ope)
+                .map_err(|msg| SyntaxError { pos, msg })?;
         }
 
         Ok(lhs)
@@ -238,14 +361,16 @@ impl<'a> Parser<'a> {
     fn parse_block(&mut self) -> Result<Block<'a>> {
         let mut block = Block::new();
 
+        self.enter_scope();
         while let Some(token) = self.peek() {
-            if token.kind == Token::Fim {
+            if token.tok == Token::Fim {
                 break;
             }
             let stmt = self.parse_statement()?;
             block.push_stmt(stmt);
         }
         self.consume_invariant(Token::Fim)?;
+        self.exit_scope();
 
         Ok(block)
     }

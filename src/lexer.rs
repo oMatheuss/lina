@@ -183,7 +183,7 @@ impl<'a> Lexer<'a> {
             return Ok(None);
         };
 
-        let position = self.get_pos();
+        let pos = self.get_pos();
 
         match c {
             '0'..='9' => {
@@ -191,8 +191,8 @@ impl<'a> Lexer<'a> {
                 let literal = self.consume_number()?;
 
                 Ok(Some(TokenDef {
-                    kind: Token::Literal(literal),
-                    position,
+                    tok: Token::Literal(literal),
+                    pos,
                 }))
             }
             '<' | '>' | '=' | '+' | '-' | '*' | '/' | '%' | '^' | ':' => {
@@ -252,15 +252,15 @@ impl<'a> Lexer<'a> {
                 };
 
                 Ok(Some(TokenDef {
-                    kind: Token::Operador(operador),
-                    position,
+                    tok: Token::Operador(operador),
+                    pos,
                 }))
             }
             '"' => {
                 let val = self.consume_string()?;
                 Ok(Some(TokenDef {
-                    kind: Token::Literal(val),
-                    position,
+                    tok: Token::Literal(val),
+                    pos,
                 }))
             }
             '(' | ')' | '{' | '}' | '[' | ']' => {
@@ -276,13 +276,13 @@ impl<'a> Lexer<'a> {
                 };
 
                 Ok(Some(TokenDef {
-                    kind: Token::Delimitador(del),
-                    position,
+                    tok: Token::Delimitador(del),
+                    pos,
                 }))
             }
             'a'..='z' | 'A'..='Z' => {
                 let identifier = self.consume_identifier();
-                let kind = match identifier {
+                let tok = match identifier {
                     "programa" => Token::Programa,
                     "seja" => Token::Seja,
                     "inteiro" => Token::Inteiro,
@@ -306,7 +306,7 @@ impl<'a> Lexer<'a> {
                     _ => Token::Identificador(identifier),
                 };
 
-                Ok(Some(TokenDef { kind, position }))
+                Ok(Some(TokenDef { tok, pos }))
             }
 
             _ => self.new_error("caracter não esperado"),

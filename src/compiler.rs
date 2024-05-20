@@ -1,6 +1,6 @@
 use std::collections::HashMap;
 
-use crate::syntax::{Block, Expression, Program, SyntaxTree};
+use crate::syntax::{Block, Expression, Program, SyntaxTree, Type};
 use crate::token::{Literal, Operador};
 use crate::vm::{LinaValue, OpCode};
 
@@ -101,16 +101,19 @@ impl<'a> Compiler<'a> {
     pub fn compile_instruction(&mut self, instr: &'a SyntaxTree) {
         match instr {
             SyntaxTree::Assign {
-                ident,
-                expr,
+                idt: ident,
+                exp: expr,
                 pos: _,
-                vtype: _,
+                typ: _,
             } => {
                 let addr = self.set_var(ident);
                 self.compile_expr(expr);
                 self.op_store(addr);
             }
-            SyntaxTree::SeStmt { expr, block } => {
+            SyntaxTree::SeStmt {
+                exp: expr,
+                blk: block,
+            } => {
                 self.compile_expr(expr);
                 self.op(OpCode::JmpF); // jump if expression is false
 
@@ -124,7 +127,10 @@ impl<'a> Compiler<'a> {
                 let jmp_offset = (end - start) as isize; // length of block
                 self.insert_offset(jmp_offset, jmp_offset_pos); // jump over the block
             }
-            SyntaxTree::EnquantoStmt { expr, block } => {
+            SyntaxTree::EnquantoStmt {
+                exp: expr,
+                blk: block,
+            } => {
                 let start = self.bytecode.len(); // start while expression
 
                 self.compile_expr(expr);
@@ -146,9 +152,9 @@ impl<'a> Compiler<'a> {
                 self.insert_offset(jmp_offset, jmpf_offset_pos);
             }
             SyntaxTree::ParaStmt {
-                ident,
-                limit,
-                block,
+                idt: ident,
+                lmt: limit,
+                blk: block,
             } => {
                 let addr = self.get_var(ident);
                 let start = self.bytecode.len();
@@ -214,11 +220,11 @@ impl<'a> Compiler<'a> {
     pub fn compile_expr(&mut self, expr: &Expression) {
         match expr {
             Expression::Literal(literal) => self.compile_literal(literal),
-            Expression::Identifier(identifier) => {
-                let addr = self.get_var(identifier);
+            Expression::Identifier(idt, _) => {
+                let addr = self.get_var(idt);
                 self.op_load(addr);
             }
-            Expression::BinOp { ope, lhs, rhs } => {
+            Expression::BinOp { ope, lhs, rhs, typ } => {
                 // Atrib (:=) does not need a left hand side
                 if *ope != Operador::Atrib {
                     self.compile_expr(lhs);
@@ -248,12 +254,21 @@ impl<'a> Compiler<'a> {
                 };
 
                 if ope.is_atrib() {
-                    let Expression::Identifier(identifier) = *lhs.to_owned() else {
+                    let Expression::Identifier(idt, _typ) = *lhs.to_owned() else {
                         panic!("ERRO: lado esquerdo de uma atribuição deve ser um identificador");
                     };
                     self.op(OpCode::Dup);
-                    let addr = self.get_var(identifier);
+                    let addr = self.get_var(idt);
                     self.op_store(addr);
+                }
+            }
+            Expression::Cast(exp, typ) => {
+                self.compile_expr(exp);
+                match typ {
+                    Type::Integer => self.op(OpCode::CastI),
+                    Type::Real => self.op(OpCode::CastF),
+                    Type::Text => self.op(OpCode::CastS),
+                    _ => panic!("ERRO: nenhuma função de cast para o tipo: {typ}"),
                 }
             }
         }

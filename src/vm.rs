@@ -10,6 +10,10 @@ pub enum OpCode {
     Dup,
     Pop,
 
+    CastI,
+    CastF,
+    CastS,
+
     Add,
     Sub,
     Mul,
@@ -51,6 +55,9 @@ impl Display for OpCode {
             OpCode::Const => write!(f, "CONST"),
             OpCode::Dup => write!(f, "DUP"),
             OpCode::Pop => write!(f, "POP"),
+            OpCode::CastI => write!(f, "CASTI"),
+            OpCode::CastF => write!(f, "CASTF"),
+            OpCode::CastS => write!(f, "CASTS"),
             OpCode::Add => write!(f, "ADD"),
             OpCode::Sub => write!(f, "SUB"),
             OpCode::Mul => write!(f, "MUL"),
@@ -565,6 +572,22 @@ impl<'a> LinaVm<'a> {
                     self.push(top);
                 }
                 OpCode::Pop => _ = self.pop(),
+
+                OpCode::CastI => {
+                    let top = self.pop();
+                    let val: i32 = top.try_into()?;
+                    self.push(val.into());
+                }
+                OpCode::CastF => {
+                    let top = self.pop();
+                    let val: f32 = top.try_into()?;
+                    self.push(val.into());
+                }
+                OpCode::CastS => {
+                    let top = self.pop();
+                    let val: String = top.into();
+                    self.push(val.into());
+                }
 
                 OpCode::Add
                 | OpCode::Sub

@@ -8,7 +8,7 @@ pub struct Program<'a> {
     pub block: Block<'a>,
 }
 
-#[derive(Debug, Clone)]
+#[derive(Debug, Clone, PartialEq)]
 pub enum Type {
     Integer,
     Real,
@@ -21,24 +21,24 @@ pub enum Type {
 pub enum SyntaxTree<'a> {
     Assign {
         pos: TokenPos,
-        vtype: Type,
-        ident: &'a str,
-        expr: Expression<'a>,
+        typ: Type,
+        idt: &'a str,
+        exp: Expression<'a>,
     },
     Print(Expression<'a>),
     Expr(Expression<'a>),
     SeStmt {
-        expr: Expression<'a>,
-        block: Block<'a>,
+        exp: Expression<'a>,
+        blk: Block<'a>,
     },
     EnquantoStmt {
-        expr: Expression<'a>,
-        block: Block<'a>,
+        exp: Expression<'a>,
+        blk: Block<'a>,
     },
     ParaStmt {
-        ident: &'a str,
-        limit: Literal<'a>,
-        block: Block<'a>,
+        idt: &'a str,
+        lmt: Literal<'a>,
+        blk: Block<'a>,
     },
 }
 
@@ -63,12 +63,31 @@ impl<'a> Block<'a> {
 #[derive(Debug, Clone)]
 pub enum Expression<'a> {
     Literal(Literal<'a>),
-    Identifier(&'a str),
+    Identifier(&'a str, Type),
     BinOp {
+        typ: Type,
         ope: Operador,
         lhs: Box<Expression<'a>>,
         rhs: Box<Expression<'a>>,
     },
+    Cast(Box<Expression<'a>>, Type),
+}
+
+impl<'a> Expression<'a> {
+    pub fn get_type(&self) -> Type {
+        match self {
+            Self::Literal(ltr) => match ltr {
+                Literal::Decimal(_) => Type::Real,
+                Literal::Inteiro(_) => Type::Integer,
+                Literal::Texto(_) => Type::Text,
+                Literal::Booleano(_) => Type::Boolean,
+                Literal::Nulo => todo!(),
+            },
+            Self::Identifier(_, typ) => typ.clone(),
+            Self::BinOp { ope, lhs, rhs, typ } => typ.clone(),
+            Self::Cast(_, typ) => typ.clone(),
+        }
+    }
 }
 
 impl<'a> Display for Program<'a> {
@@ -100,29 +119,25 @@ impl<'a> Display for SyntaxTree<'a> {
         match self {
             SyntaxTree::Assign {
                 pos: _,
-                vtype,
-                ident,
-                expr,
+                typ,
+                idt,
+                exp,
             } => {
-                writeln!(f, "{vtype} {ident} := {expr}")
+                writeln!(f, "{typ} {idt} := {exp}")
             }
-            SyntaxTree::SeStmt { expr, block } => {
-                writeln!(f, "se {expr} entao")?;
-                write!(f, "{block}")?;
+            SyntaxTree::SeStmt { exp, blk } => {
+                writeln!(f, "se {exp} entao")?;
+                write!(f, "{blk}")?;
                 writeln!(f, "fim")
             }
-            SyntaxTree::EnquantoStmt { expr, block } => {
-                writeln!(f, "enquanto {expr} faca")?;
-                write!(f, "{block}")?;
+            SyntaxTree::EnquantoStmt { exp, blk } => {
+                writeln!(f, "enquanto {exp} faca")?;
+                write!(f, "{blk}")?;
                 writeln!(f, "fim")
             }
-            SyntaxTree::ParaStmt {
-                ident,
-                limit,
-                block,
-            } => {
-                writeln!(f, "para {ident} ate {limit} repetir")?;
-                write!(f, "{block}")?;
+            SyntaxTree::ParaStmt { idt, lmt, blk } => {
+                writeln!(f, "para {idt} ate {lmt} repetir")?;
+                write!(f, "{blk}")?;
                 writeln!(f, "fim")
             }
             SyntaxTree::Expr(expr) => {
@@ -153,9 +168,12 @@ impl<'a> Display for Expression<'a> {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         match self {
             Expression::Literal(literal) => write!(f, "{}", literal),
-            Expression::Identifier(identifier) => write!(f, "{}", identifier),
-            Expression::BinOp { ope, lhs, rhs } => {
+            Expression::Identifier(idt, typ) => write!(f, "({typ}){idt}"),
+            Expression::BinOp { ope, lhs, rhs, typ } => {
                 write!(f, "({} {} {})", lhs, ope, rhs)
+            }
+            Expression::Cast(exp, typ) => {
+                write!(f, "({typ}){exp}")
             }
         }
     }

@@ -8,8 +8,8 @@ pub struct TokenPos {
 
 #[derive(Debug, Clone)]
 pub struct TokenDef<'a> {
-    pub kind: Token<'a>,
-    pub position: TokenPos,
+    pub tok: Token<'a>,
+    pub pos: TokenPos,
 }
 
 #[derive(Debug, PartialEq, Clone)]
@@ -133,14 +133,6 @@ impl Operador {
 
     pub fn is_atrib(&self) -> bool {
         self >= &Operador::Atrib
-    }
-
-    pub fn is_boolean(&self) -> bool {
-        self <= &Operador::Ou
-    }
-
-    pub fn is_arithmetic(&self) -> bool {
-        self >= &Operador::Adic && self <= &Operador::Exp
     }
 }
 
