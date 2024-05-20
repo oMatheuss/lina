@@ -125,6 +125,14 @@ impl<'a> Parser<'a> {
             Token::Seja | Token::Inteiro | Token::Real | Token::Booleano | Token::Texto => {
                 let decl = self.advance()?;
                 let idt = self.consume_identifier()?;
+
+                if let Some(sym) = self.find_symbol(idt) {
+                    Err(SyntaxError {
+                        msg: format!("redeclaração da variável {idt}"),
+                        pos: sym.pos.clone(),
+                    })?
+                }
+
                 self.consume_invariant(Token::Operador(Operador::Atrib))?;
                 let exp = self.parse_expression(1)?;
 
@@ -164,6 +172,7 @@ impl<'a> Parser<'a> {
             Token::Para => {
                 self.consume_invariant(Token::Para)?;
                 let idt = self.consume_identifier()?;
+                self.set_symbol(idt, pos.clone(), Type::Integer);
                 self.consume_invariant(Token::Ate)?;
                 let lmt = self.consume_literal()?;
                 self.consume_invariant(Token::Repetir)?;
@@ -177,7 +186,7 @@ impl<'a> Parser<'a> {
                 SyntaxTree::Expr(expression)
             }
             _ => {
-                let msg = format!("token inesperado {}", token_ref.tok).into();
+                let msg = format!("token inesperado {}", token_ref.tok);
                 Err(SyntaxError { msg, pos })?
             }
         };
