@@ -37,7 +37,9 @@ pub enum SyntaxTree<'a> {
     },
     ParaStmt {
         idt: &'a str,
+        sta: Option<Literal<'a>>,
         lmt: Literal<'a>,
+        stp: Option<Literal<'a>>,
         blk: Block<'a>,
     },
 }
@@ -84,7 +86,7 @@ impl<'a> Expression<'a> {
                 Literal::Nulo => todo!(),
             },
             Self::Identifier(_, typ) => typ.clone(),
-            Self::BinOp { ope, lhs, rhs, typ } => typ.clone(),
+            Self::BinOp { typ, .. } => typ.clone(),
             Self::Cast(_, typ) => typ.clone(),
         }
     }
@@ -135,8 +137,16 @@ impl<'a> Display for SyntaxTree<'a> {
                 write!(f, "{blk}")?;
                 writeln!(f, "fim")
             }
-            SyntaxTree::ParaStmt { idt, lmt, blk } => {
-                writeln!(f, "para {idt} ate {lmt} repetir")?;
+            SyntaxTree::ParaStmt {
+                idt,
+                sta,
+                lmt,
+                stp,
+                blk,
+            } => {
+                let sta = sta.as_ref().unwrap_or(&Literal::Inteiro(0));
+                let stp = stp.as_ref().unwrap_or(&Literal::Inteiro(1));
+                writeln!(f, "para {idt} := {sta} ate {lmt} incremento {stp} repetir")?;
                 write!(f, "{blk}")?;
                 writeln!(f, "fim")
             }
@@ -169,7 +179,7 @@ impl<'a> Display for Expression<'a> {
         match self {
             Expression::Literal(literal) => write!(f, "{}", literal),
             Expression::Identifier(idt, typ) => write!(f, "({typ}){idt}"),
-            Expression::BinOp { ope, lhs, rhs, typ } => {
+            Expression::BinOp { ope, lhs, rhs, .. } => {
                 write!(f, "({} {} {})", lhs, ope, rhs)
             }
             Expression::Cast(exp, typ) => {

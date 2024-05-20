@@ -25,6 +25,7 @@ pub enum Token<'a> {
     Enquanto,
     Para,
     Ate,
+    Incremento,
     Repetir,
     Funcao,
     Retorne,
@@ -43,10 +44,10 @@ impl Display for Token<'_> {
 
             Token::Seja => write!(f, "seja"),
 
-            Token::Inteiro => write!(f, ""),
-            Token::Real => write!(f, ""),
-            Token::Texto => write!(f, ""),
-            Token::Booleano => write!(f, ""),
+            Token::Inteiro => write!(f, "inteiro"),
+            Token::Real => write!(f, "real"),
+            Token::Texto => write!(f, "texto"),
+            Token::Booleano => write!(f, "booleano"),
 
             Token::Se => write!(f, "se"),
             Token::Entao => write!(f, "então"),
@@ -54,6 +55,7 @@ impl Display for Token<'_> {
             Token::Enquanto => write!(f, "enquanto"),
             Token::Para => write!(f, "para"),
             Token::Ate => write!(f, "ate"),
+            Token::Incremento => write!(f, "incremento"),
             Token::Repetir => write!(f, "repetir"),
 
             Token::Funcao => write!(f, "função"),

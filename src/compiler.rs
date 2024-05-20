@@ -152,15 +152,20 @@ impl<'a> Compiler<'a> {
                 self.insert_offset(jmp_offset, jmpf_offset_pos);
             }
             SyntaxTree::ParaStmt {
-                idt: ident,
-                lmt: limit,
-                blk: block,
+                idt,
+                sta,
+                lmt,
+                stp,
+                blk,
             } => {
-                let addr = self.get_var(ident);
+                let addr = self.set_var(idt);
+                self.compile_literal(sta.as_ref().unwrap_or(&Literal::Inteiro(0)));
+                self.op_store(addr);
+
                 let start = self.bytecode.len();
 
                 self.op_load(addr);
-                self.compile_literal(limit);
+                self.compile_literal(lmt);
                 self.op(OpCode::LE);
                 self.op(OpCode::JmpF);
 
@@ -168,10 +173,10 @@ impl<'a> Compiler<'a> {
                 self.push_offset(0);
 
                 let block_start = self.bytecode.len();
-                self.compile_block(block);
+                self.compile_block(blk);
 
                 self.op_load(addr);
-                self.compile_literal(&Literal::Decimal(1.0));
+                self.compile_literal(stp.as_ref().unwrap_or(&Literal::Inteiro(1)));
                 self.op(OpCode::Add);
                 self.op_store(addr);
 
@@ -224,7 +229,12 @@ impl<'a> Compiler<'a> {
                 let addr = self.get_var(idt);
                 self.op_load(addr);
             }
-            Expression::BinOp { ope, lhs, rhs, typ } => {
+            Expression::BinOp {
+                ope,
+                lhs,
+                rhs,
+                typ: _,
+            } => {
                 // Atrib (:=) does not need a left hand side
                 if *ope != Operador::Atrib {
                     self.compile_expr(lhs);

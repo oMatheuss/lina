@@ -295,6 +295,7 @@ impl<'a> Lexer<'a> {
                     "se" => Token::Se,
                     "função" => Token::Funcao,
                     "para" => Token::Para,
+                    "incremento" => Token::Incremento,
                     "retorne" => Token::Retorne,
                     "fim" => Token::Fim,
                     "nulo" => Token::Literal(Literal::Nulo),

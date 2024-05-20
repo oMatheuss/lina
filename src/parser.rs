@@ -172,12 +172,57 @@ impl<'a> Parser<'a> {
             Token::Para => {
                 self.consume_invariant(Token::Para)?;
                 let idt = self.consume_identifier()?;
-                self.set_symbol(idt, pos.clone(), Type::Integer);
-                self.consume_invariant(Token::Ate)?;
+
+                if let Some(Symbol { pos, typ }) = self.find_symbol(idt) {
+                    if *typ != Type::Integer {
+                        Err(SyntaxError {
+                            msg: format!("variavel {idt} não é do tipo inteiro"),
+                            pos: pos.clone(),
+                        })?
+                    }
+                } else {
+                    self.set_symbol(idt, pos.clone(), Type::Integer);
+                }
+
+                let TokenDef { tok, pos } = self.advance()?;
+                let sta = match tok {
+                    Token::Operador(Operador::Atrib) => {
+                        let sta = self.consume_literal()?;
+                        self.consume_invariant(Token::Ate)?;
+                        Some(sta)
+                    }
+                    Token::Ate => None,
+                    _ => Err(SyntaxError {
+                        msg: format!("esperado atribuição ou ate, encontrou {tok}"),
+                        pos,
+                    })?,
+                };
+
                 let lmt = self.consume_literal()?;
-                self.consume_invariant(Token::Repetir)?;
+
+                let TokenDef { tok, pos } = self.advance()?;
+
+                let stp = match tok {
+                    Token::Incremento => {
+                        let stp = self.consume_literal()?;
+                        self.consume_invariant(Token::Repetir)?;
+                        Some(stp)
+                    }
+                    Token::Repetir => None,
+                    _ => Err(SyntaxError {
+                        msg: format!("esperado incremento ou repetir, encontrou {tok}"),
+                        pos,
+                    })?,
+                };
+
                 let blk = self.parse_block()?;
-                SyntaxTree::ParaStmt { idt, lmt, blk }
+                SyntaxTree::ParaStmt {
+                    idt,
+                    sta,
+                    lmt,
+                    stp,
+                    blk,
+                }
             }
             Token::Funcao => todo!(),
             Token::Retorne => todo!(),
