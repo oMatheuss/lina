@@ -1,14 +1,7 @@
 programa Primos
 
-inteiro x = 2
-
-para x ate 1000000 repetir
-    inteiro y = 2
-    enquanto
-        y * y < x e
-        x % y > 0
-    repetir
-        y += 1
-    fim
+para x := 2 ate 1000 repetir
+    seja y := 2
+    enquanto y * y < x e x % y > 0 repetir y += 1 fim
     se y * y > x entao saida := x fim
 fim

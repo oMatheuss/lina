@@ -2,11 +2,10 @@ programa Fibonacci
 
 inteiro x := 0
 inteiro y := 1
-inteiro i := 1
 
 saida := "fib(0) = " + x
 
-para i ate 30 repetir
+para i := 1 ate 30 repetir
     inteiro z := x + y
     x := y
     y := z
