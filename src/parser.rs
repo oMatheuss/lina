@@ -126,14 +126,15 @@ impl<'a> Parser<'a> {
                 let decl = self.advance()?;
                 let idt = self.consume_identifier()?;
 
-                if let Some(sym) = self.find_symbol(idt) {
+                if self.find_symbol(idt).is_some() {
                     Err(SyntaxError {
                         msg: format!("redeclaração da variável {idt}"),
-                        pos: sym.pos.clone(),
+                        pos: decl.pos.clone(),
                     })?
                 }
 
                 self.consume_invariant(Token::Operador(Operador::Atrib))?;
+                let exp_pos = self.peek().and_then(|v| Some(v.pos.clone()));
                 let exp = self.parse_expression(1)?;
 
                 let typ = match decl.tok {
@@ -144,6 +145,14 @@ impl<'a> Parser<'a> {
                     Token::Booleano => Type::Boolean,
                     _ => unreachable!(),
                 };
+
+                let exp_typ = exp.get_type();
+                if typ != exp_typ {
+                    Err(SyntaxError {
+                        msg: format!("{exp_typ} não pode ser convertido para {typ}"),
+                        pos: exp_pos.unwrap(),
+                    })?
+                }
 
                 self.set_symbol(idt, pos.clone(), typ.clone());
 
