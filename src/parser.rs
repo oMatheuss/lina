@@ -57,6 +57,11 @@ impl<'a> Parser<'a> {
         scope.insert(name, Symbol { pos, typ });
     }
 
+    fn get_symbol(&mut self, name: &str) -> Option<&Symbol> {
+        let scope = self.symbols.last_mut().unwrap();
+        scope.get(name)
+    }
+
     fn find_symbol(&mut self, name: &str) -> Option<&Symbol> {
         self.symbols.iter().rev().find_map(|scope| scope.get(name))
     }
@@ -126,37 +131,60 @@ impl<'a> Parser<'a> {
                 let decl = self.advance()?;
                 let idt = self.consume_identifier()?;
 
-                if self.find_symbol(idt).is_some() {
+                if self.get_symbol(idt).is_some() {
                     Err(SyntaxError {
                         msg: format!("redeclaração da variável {idt}"),
                         pos: decl.pos.clone(),
                     })?
                 }
 
-                self.consume_invariant(Token::Operador(Operador::Atrib))?;
-                let exp_pos = self.peek().and_then(|v| Some(v.pos.clone()));
-                let exp = self.parse_expression(1)?;
+                if let Some(TokenDef {
+                    tok: Token::Operador(Operador::Atrib),
+                    pos: _,
+                }) = self.peek()
+                {
+                    self.advance()?;
+                    let exp_pos = self.peek().and_then(|v| Some(v.pos.clone()));
+                    let exp = self.parse_expression(1)?;
 
-                let typ = match decl.tok {
-                    Token::Seja => exp.get_type(),
-                    Token::Inteiro => Type::Integer,
-                    Token::Real => Type::Real,
-                    Token::Texto => Type::Text,
-                    Token::Booleano => Type::Boolean,
-                    _ => unreachable!(),
-                };
+                    let typ = match decl.tok {
+                        Token::Seja => exp.get_type(),
+                        Token::Inteiro => Type::Integer,
+                        Token::Real => Type::Real,
+                        Token::Texto => Type::Text,
+                        Token::Booleano => Type::Boolean,
+                        _ => unreachable!(),
+                    };
 
-                let exp_typ = exp.get_type();
-                if typ != exp_typ {
-                    Err(SyntaxError {
-                        msg: format!("{exp_typ} não pode ser convertido para {typ}"),
-                        pos: exp_pos.unwrap(),
-                    })?
+                    let exp_typ = exp.get_type();
+                    if typ != exp_typ {
+                        Err(SyntaxError {
+                            msg: format!("{exp_typ} não pode ser convertido para {typ}"),
+                            pos: exp_pos.unwrap(),
+                        })?
+                    }
+
+                    self.set_symbol(idt, pos.clone(), typ.clone());
+
+                    SyntaxTree::Assign { pos, idt, exp, typ }
+                } else {
+                    let (typ, ini) = match decl.tok {
+                        Token::Seja => Err(SyntaxError {
+                            msg: format!("declarador seja não pode ser usado sem inicializador"),
+                            pos: decl.pos,
+                        })?,
+                        Token::Inteiro => (Type::Integer, Literal::Inteiro(0)),
+                        Token::Real => (Type::Real, Literal::Decimal(0.0)),
+                        Token::Texto => (Type::Text, Literal::Texto("")),
+                        Token::Booleano => (Type::Boolean, Literal::Booleano(false)),
+                        _ => unreachable!(),
+                    };
+                    let exp = Expression::Literal(ini);
+
+                    self.set_symbol(idt, pos.clone(), typ.clone());
+
+                    SyntaxTree::Assign { pos, idt, exp, typ }
                 }
-
-                self.set_symbol(idt, pos.clone(), typ.clone());
-
-                SyntaxTree::Assign { pos, idt, exp, typ }
             }
             Token::Identificador("saida") => {
                 let _ = self.consume_identifier()?;
