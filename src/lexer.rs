@@ -144,9 +144,23 @@ impl<'a> Lexer<'a> {
         };
 
         match state {
-            1 => Ok(Literal::Inteiro(string.parse().unwrap())),
+            1 => {
+                let inteiro = string.parse().map_err(|err| LexicalError {
+                    row: self.line_num,
+                    col: start - self.line_start,
+                    msg: format!("{string} não pôde ser convertido para inteiro: {err}"),
+                })?;
+                Ok(Literal::Inteiro(inteiro))
+            }
             2 => self.new_error("esperado número após ponto (.)"),
-            3 => Ok(Literal::Decimal(string.parse().unwrap())),
+            3 => {
+                let decimal = string.parse().map_err(|err| LexicalError {
+                    row: self.line_num,
+                    col: start - self.line_start,
+                    msg: format!("{string} não pôde ser convertido para decimal: {err}"),
+                })?;
+                Ok(Literal::Decimal(decimal))
+            }
             _ => unreachable!(),
         }
     }
