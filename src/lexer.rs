@@ -312,7 +312,6 @@ impl<'a> Lexer<'a> {
                     "incremento" => Token::Incremento,
                     "retorne" => Token::Retorne,
                     "fim" => Token::Fim,
-                    "nulo" => Token::Literal(Literal::Nulo),
                     "e" => Token::Operador(Operador::E),
                     "ou" => Token::Operador(Operador::Ou),
                     "ate" => Token::Ate,

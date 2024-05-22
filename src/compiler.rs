@@ -207,7 +207,6 @@ impl<'a> Compiler<'a> {
             Literal::Inteiro(number) => LinaValue::Int32(number),
             Literal::Texto(text) => LinaValue::String(String::from(text)),
             Literal::Booleano(boolean) => LinaValue::Boolean(boolean),
-            Literal::Nulo => todo!(),
         };
 
         let find = self.constants.iter().position(|v| *v == value);

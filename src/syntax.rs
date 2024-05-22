@@ -83,7 +83,6 @@ impl<'a> Expression<'a> {
                 Literal::Inteiro(_) => Type::Integer,
                 Literal::Texto(_) => Type::Text,
                 Literal::Booleano(_) => Type::Boolean,
-                Literal::Nulo => todo!(),
             },
             Self::Identifier(_, typ) => typ.clone(),
             Self::BinOp { typ, .. } => typ.clone(),

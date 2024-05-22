@@ -174,7 +174,6 @@ pub enum Literal<'a> {
     Inteiro(i32),
     Texto(&'a str),
     Booleano(bool),
-    Nulo,
 }
 
 impl Display for Literal<'_> {
@@ -184,7 +183,6 @@ impl Display for Literal<'_> {
             Literal::Inteiro(number) => write!(f, "{}", number),
             Literal::Texto(string) => write!(f, "{}", string),
             Literal::Booleano(boolean) => write!(f, "{}", boolean),
-            Literal::Nulo => write!(f, "nulo"),
         }
     }
 }
