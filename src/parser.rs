@@ -291,86 +291,46 @@ impl<'a> Parser<'a> {
         let mut left = lhs;
         let mut right = rhs;
 
-        let result_typ = match ope {
-            MaiorQue | MenorQue | MaiorIgualQue | MenorIgualQue => match (&lhs_typ, &rhs_typ) {
-                (Integer, Integer) | (Integer, Real) | (Real, Integer) | (Real, Real) => Boolean,
-                _ => Err(format!(
-                    "operação {ope} não suportada entre {lhs_typ} e {rhs_typ}"
-                ))?,
-            },
+        let result_typ = match (&lhs_typ, &rhs_typ) {
+            // default case
+            (x, y) if x == y => x.clone(),
 
-            Igual | Diferente => Boolean,
-
-            E | Ou => match (&lhs_typ, &rhs_typ) {
-                (Boolean, Boolean) | (Integer, Integer) => Boolean,
-                _ => Err(format!(
-                    "operação {ope} não suportada entre {lhs_typ} e {rhs_typ}"
-                ))?,
-            },
-
-            Adic | Subt | Mult | Div | Resto | Exp => match (&lhs_typ, &rhs_typ) {
-                (Integer, Integer) => Integer,
-                (Integer, Real) => {
-                    left = Expression::Cast(Box::new(left), Real);
-                    Real
-                }
-                (Integer, Text) => {
-                    left = Expression::Cast(Box::new(left), Text);
-                    Text
-                }
-                (Real, Real) => Real,
-                (Real, Integer) => {
-                    right = Expression::Cast(Box::new(right), Real);
-                    Real
-                }
-                (Real, Text) => {
-                    left = Expression::Cast(Box::new(left), Text);
-                    Text
-                }
-
-                (Text, Integer) | (Text, Real) | (Text, Text) | (Text, Boolean) => {
-                    right = Expression::Cast(Box::new(right), Text);
-                    Text
-                }
-
-                (Boolean, Text) => {
-                    left = Expression::Cast(Box::new(left), Text);
-                    Text
-                }
-
-                _ => Err(format!(
-                    "operação {ope} não suportada entre {lhs_typ} e {rhs_typ}"
-                ))?,
-            },
-
-            Atrib | AdicAtrib | SubtAtrib | MultAtrib | DivAtrib | RestoAtrib | ExpAtrib => {
-                match (&lhs_typ, &rhs_typ) {
-                    (Integer, Integer) => Integer,
-                    (Integer, Real) => {
-                        right = Expression::Cast(Box::new(right), Integer);
-                        Integer
-                    }
-
-                    (Real, Real) => Real,
-                    (Real, Integer) => {
-                        right = Expression::Cast(Box::new(right), Real);
-                        Real
-                    }
-
-                    (Text, Integer) | (Text, Real) | (Text, Text) | (Text, Boolean) => {
-                        right = Expression::Cast(Box::new(right), Text);
-                        Text
-                    }
-
-                    _ => Err(format!(
-                        "operação {ope} não suportada entre {lhs_typ} e {rhs_typ}"
-                    ))?,
-                }
+            // implicit casts
+            (Real, Integer) => {
+                right = Expression::Cast(Box::new(right), Real);
+                Real
             }
+            (Integer, Real) => {
+                left = Expression::Cast(Box::new(left), Real);
+                Real
+            }
+            (Text, _) => {
+                right = Expression::Cast(Box::new(right), Text);
+                Text
+            }
+            (_, Text) => {
+                left = Expression::Cast(Box::new(left), Text);
+                Text
+            }
+
+            // not supported
+            _ => Err(format!("tipos incompatíveis {lhs_typ} e {rhs_typ}"))?,
+        };
+
+        let typ = match (&ope, result_typ) {
+            (MaiorQue | MenorQue | MaiorIgualQue | MenorIgualQue, Integer | Real) => Boolean,
+            (Igual | Diferente, _) => Boolean,
+            (E | Ou, Boolean) => Boolean,
+            (Adic | Subt | Mult | Div | Resto | Exp, r @ (Integer | Real)) => r.clone(),
+            (Adic, Text) => Text,
+
+            _ => Err(format!(
+                "operação {ope} não suportada entre {lhs_typ} e {rhs_typ}"
+            ))?,
         };
 
         Ok(Expression::BinOp {
-            typ: result_typ,
+            typ,
             ope,
             lhs: Box::new(left),
             rhs: Box::new(right),
