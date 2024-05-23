@@ -319,10 +319,14 @@ impl<'a> Parser<'a> {
 
         let typ = match (&ope, result_typ) {
             (MaiorQue | MenorQue | MaiorIgualQue | MenorIgualQue, Integer | Real) => Boolean,
-            (Igual | Diferente, _) => Boolean,
+            (Igual | Diferente | Atrib, _) => Boolean,
             (E | Ou, Boolean) => Boolean,
-            (Adic | Subt | Mult | Div | Resto | Exp, r @ (Integer | Real)) => r.clone(),
-            (Adic, Text) => Text,
+            (
+                Adic | Subt | Mult | Div | Resto | Exp | AdicAtrib | SubtAtrib | MultAtrib
+                | DivAtrib | RestoAtrib | ExpAtrib,
+                r @ (Integer | Real),
+            ) => r.clone(),
+            (Adic | AdicAtrib, Text) => Text,
 
             _ => Err(format!(
                 "operação {ope} não suportada entre {lhs_typ} e {rhs_typ}"
