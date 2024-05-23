@@ -320,7 +320,7 @@ impl<'a> Parser<'a> {
         let typ = match (&ope, result_typ) {
             (MaiorQue | MenorQue | MaiorIgualQue | MenorIgualQue, Integer | Real) => Boolean,
             (Igual | Diferente | Atrib, _) => Boolean,
-            (E | Ou, Boolean) => Boolean,
+            (E | Ou, r @ (Boolean | Integer)) => r.clone(),
             (
                 Adic | Subt | Mult | Div | Resto | Exp | AdicAtrib | SubtAtrib | MultAtrib
                 | DivAtrib | RestoAtrib | ExpAtrib,
