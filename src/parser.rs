@@ -8,8 +8,8 @@ use crate::token::{Delimitador, Literal, OpAssoc, OpInfo, Operador, Token, Token
 
 #[derive(Debug)]
 pub struct SyntaxError {
-    pos: TokenPos,
-    msg: String,
+    pub pos: TokenPos,
+    pub msg: String,
 }
 
 impl std::fmt::Display for SyntaxError {

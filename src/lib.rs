@@ -7,30 +7,59 @@ mod syntax;
 mod token;
 mod vm;
 
-use vm::LinaVm;
+use lexer::LexicalError;
+use parser::SyntaxError;
+use vm::{LinaVm, RuntimeError};
 
-pub fn run_code(code: &str, stdout: &mut dyn Write) -> Result<(), ()> {
-    let tokens = lexer::lex(code).map_err(|err| writeln!(stdout, "{}", err).unwrap())?;
-
-    let program = parser::parse(tokens).map_err(|err| writeln!(stdout, "{}", err).unwrap())?;
-
-    let compiler = compiler::compile(&program);
-
-    let mut vm = LinaVm::new(&compiler.bytecode, &compiler.constants);
-
-    vm.run(stdout)
-        .map_err(|err| writeln!(stdout, "{}", err).unwrap())
+pub struct LinaExec<'a, T>
+where
+    T: Write,
+{
+    pub stdout: T,
+    pub source: &'a str,
+    pub path: &'a str,
 }
 
-pub fn decompile_code(code: &str, stdout: &mut dyn Write) -> Result<(), ()> {
-    let tokens = lexer::lex(code).map_err(|err| writeln!(stdout, "{}", err).unwrap())?;
+impl<'a, T> LinaExec<'a, T>
+where
+    T: Write,
+{
+    fn lex_err(&mut self, err: LexicalError) {
+        _ = writeln!(self.stdout, "Erro Léxico: {}", err.msg);
+        _ = writeln!(self.stdout, "{}:{}:{}", self.path, err.row, err.col);
+    }
 
-    let program = parser::parse(tokens).map_err(|err| writeln!(stdout, "{}", err).unwrap())?;
+    fn syn_err(&mut self, err: SyntaxError) {
+        _ = writeln!(self.stdout, "Erro Sintático: {}", err.msg);
+        _ = writeln!(self.stdout, "{}:{}:{}", self.path, err.pos.row, err.pos.col);
+    }
 
-    let compiler = compiler::compile(&program);
+    fn run_err(&mut self, err: RuntimeError) {
+        _ = writeln!(self.stdout, "Erro: {err}");
+    }
 
-    let mut vm = LinaVm::new(&compiler.bytecode, &compiler.constants);
+    pub fn run(&mut self) -> Result<(), ()> {
+        let tokens = lexer::lex(&self.source).map_err(|err| self.lex_err(err))?;
+        let program = parser::parse(tokens).map_err(|err| self.syn_err(err))?;
 
-    vm.decompile(stdout)
-        .map_err(|err| writeln!(stdout, "{}", err).unwrap())
+        let compiler = compiler::compile(&program);
+        let mut vm = LinaVm::new(&compiler.bytecode, &compiler.constants);
+
+        vm.run(&mut self.stdout).map_err(|err| self.run_err(err))?;
+
+        Ok(())
+    }
+
+    pub fn decompile(&mut self) -> Result<(), ()> {
+        let tokens = lexer::lex(&self.source).map_err(|err| self.lex_err(err))?;
+        let program = parser::parse(tokens).map_err(|err| self.syn_err(err))?;
+
+        let compiler = compiler::compile(&program);
+        let mut vm = LinaVm::new(&compiler.bytecode, &compiler.constants);
+
+        vm.decompile(&mut self.stdout)
+            .map_err(|err| self.run_err(err))?;
+
+        Ok(())
+    }
 }

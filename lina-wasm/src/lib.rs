@@ -1,4 +1,4 @@
-use lina::{decompile_code, run_code};
+use lina::LinaExec;
 use std::io::{BufWriter, Write};
 use wasm_bindgen::prelude::*;
 
@@ -27,7 +27,13 @@ pub fn compile(code: &str) {
 
     terminal_clear();
 
-    let _ = match run_code(code, &mut terminal) {
+    let mut exec = LinaExec {
+        path: "main",
+        source: code,
+        stdout: &mut terminal,
+    };
+
+    let _ = match exec.run() {
         Ok(()) => writeln!(terminal, "compilação & execução finalizados com sucesso"),
         Err(()) => writeln!(terminal, "compilação & execução finalizados com erro"),
     };
@@ -39,8 +45,14 @@ pub fn decompile(code: &str) {
 
     terminal_clear();
 
-    let _ = match decompile_code(code, &mut terminal) {
-        Ok(()) => writeln!(terminal, "descompilação finalizada com sucesso"),
-        Err(()) => writeln!(terminal, "descompilação finalizada com erro"),
+    let mut exec = LinaExec {
+        path: "main",
+        source: code,
+        stdout: &mut terminal,
+    };
+
+    let _ = match exec.decompile() {
+        Ok(()) => writeln!(terminal, "descompilação & execução finalizados com sucesso"),
+        Err(()) => writeln!(terminal, "descompilação & execução finalizados com erro"),
     };
 }

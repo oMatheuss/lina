@@ -2,7 +2,7 @@ use std::env;
 use std::fs::File;
 use std::io::Read;
 
-use lina::run_code;
+use lina::LinaExec;
 
 fn main() {
     let mut code = String::new();
@@ -10,12 +10,16 @@ fn main() {
     let args = env::args().collect::<Vec<_>>();
     let file_name = args.get(1).expect("nenhum arquivo especificado");
 
-    let mut file = File::open(file_name).expect("Arquivo não encontrado");
+    let mut file = File::open(file_name).expect("arquivo não encontrado");
 
     file.read_to_string(&mut code)
-        .expect("Erro ao ler o arquivo");
+        .expect("erro ao ler o arquivo");
 
-    let mut stdout = std::io::stdout();
+    let mut exec = LinaExec {
+        path: &file_name,
+        source: &code,
+        stdout: std::io::stdout(),
+    };
 
-    run_code(&code, &mut stdout).expect("programa ser executado");
+    _ = exec.run();
 }

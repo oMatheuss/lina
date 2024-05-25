@@ -14,9 +14,9 @@ pub struct Lexer<'a> {
 
 #[derive(Debug)]
 pub struct LexicalError {
-    row: usize,
-    col: usize,
-    msg: String,
+    pub row: usize,
+    pub col: usize,
+    pub msg: String,
 }
 
 impl std::fmt::Display for LexicalError {
