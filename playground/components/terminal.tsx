@@ -3,17 +3,18 @@
 import { TerminalSquareIcon } from 'lucide-react';
 import { useEffect, useRef } from 'react';
 
-export function Terminal() {
-  const textarea = useRef<HTMLTextAreaElement>(null);
+interface TerminalProps {
+  value: string;
+  onChange: (value: string) => void;
+}
 
+export function Terminal({ value, onChange }: TerminalProps) {
   useEffect(() => {
-    if (!textarea.current) return;
-    const terminal = textarea.current;
     window.terminal_write = (str) => {
-      terminal.value += str;
+      onChange(str);
     };
     window.terminal_clear = () => {
-      terminal.value = '';
+      onChange('');
     };
 
     return () => {
@@ -33,7 +34,8 @@ export function Terminal() {
         autoComplete="off"
         spellCheck="false"
         autoCapitalize="none"
-        ref={textarea}
+        onChange={(e) => onChange(e.target.value)}
+        value={value}
       ></textarea>
     </div>
   );

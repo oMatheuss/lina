@@ -5,7 +5,7 @@ import { Terminal } from '@/components/terminal';
 import { Binary, PlayIcon } from 'lucide-react';
 import type { editor } from 'monaco-editor';
 import init, { compile, decompile } from 'lina-wasm';
-import { useRef } from 'react';
+import { useRef, useState } from 'react';
 
 export default function Home() {
   const editorRef = useRef<editor.IStandaloneCodeEditor | null>(null);
@@ -28,9 +28,15 @@ export default function Home() {
     editorRef.current = editor;
   };
 
+  const [terminal, setTerminal] = useState<string>('');
+
+  const clearTerminal = () => {
+    setTerminal('');
+  };
+
   return (
     <main className="min-h-dvh mx-4 flex flex-col">
-      <div className="py-4 space-x-4">
+      <div className="flex py-4 gap-6">
         <button
           onClick={handleCompile}
           className="h-10 rounded-sm bg-indigo-500 px-2 text-sm hover:bg-indigo-600 whitespace-nowrap"
@@ -45,13 +51,20 @@ export default function Home() {
           <Binary className="inline mr-2 align-middle" />
           <span className="inline align-middle">DESCOMPILAR</span>
         </button>
+        <button
+          onClick={clearTerminal}
+          className="h-10 rounded-sm bg-indigo-500 px-2 text-sm justify-end hover:bg-indigo-600 whitespace-nowrap"
+        >
+          <Binary className="inline mr-2 align-middle" />
+          <span className="inline align-middle">Limpar</span>
+        </button>
       </div>
       <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
         <Editor
           onCreate={handleCreate}
           className="min-h-[500px] h-[calc(100dvh-6.5rem)] border-4 border-indigo-500 rounded-sm"
         />
-        <Terminal />
+        <Terminal value={terminal} onChange={setTerminal} />
       </div>
     </main>
   );
