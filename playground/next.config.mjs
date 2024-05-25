@@ -12,6 +12,7 @@ const nextConfig = {
     return config;
   },
   transpilePackages: ['file:../lina-wasm/pkg', 'monaco-editor'],
+  images: { unoptimized: true } 
 };
 
 export default nextConfig;

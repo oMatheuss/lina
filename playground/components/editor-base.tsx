@@ -40,7 +40,7 @@ export default function EditorBase({
     const div = container.current;
 
     const editor = monaco.editor.create(div, {
-      theme: 'vscode',
+      theme: 'vs-dark',
       language: 'lina',
       automaticLayout: true,
       fontFamily: fontFamily,
