@@ -24,10 +24,6 @@ export default function Home() {
     if (value) init().then(() => decompile(value));
   };
 
-  const handleCreate = (editor: editor.IStandaloneCodeEditor) => {
-    editorRef.current = editor;
-  };
-
   const [terminal, setTerminal] = useState<string>('');
 
   const clearTerminal = () => {
@@ -61,7 +57,7 @@ export default function Home() {
       </div>
       <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
         <Editor
-          onCreate={handleCreate}
+          editorRef={editorRef}
           className="min-h-[500px] h-[calc(100dvh-6.5rem)] border-4 border-indigo-500 rounded-sm"
         />
         <Terminal value={terminal} onChange={setTerminal} />

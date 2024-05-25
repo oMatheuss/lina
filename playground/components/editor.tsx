@@ -14,20 +14,20 @@ const font = JetBrains_Mono({
 
 interface EditorProps {
   className?: string;
-  onCreate?: (editor: editor.IStandaloneCodeEditor) => void;
+  editorRef: React.MutableRefObject<editor.IStandaloneCodeEditor | null>;
 }
 
 const MonacoEditor = dynamic(() => import('@/components/editor-base'), {
   ssr: false,
 });
 
-export function Editor({ className, onCreate }: EditorProps) {
+export function Editor({ className, editorRef }: EditorProps) {
   return (
     <MonacoEditor
       className={className}
       style={font.style}
       fontFamily={font.style.fontFamily}
-      onCreate={onCreate}
+      editorRef={editorRef}
     />
   );
 }

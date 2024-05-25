@@ -2,7 +2,12 @@
 
 import * as monaco from 'monaco-editor/esm/vs/editor/editor.api';
 import { AUTOCOMPLETE, CONFIG, GRAMMAR } from '@/lib/lang-def';
-import { type CSSProperties, useEffect, useRef } from 'react';
+import {
+  type CSSProperties,
+  useEffect,
+  useRef,
+  type MutableRefObject,
+} from 'react';
 
 const LANG = 'lina';
 
@@ -19,12 +24,16 @@ interface EditorBaseProps {
   className?: string;
   fontFamily?: string;
   style?: CSSProperties;
-  onCreate?: (editor: monaco.editor.IStandaloneCodeEditor) => void;
+  editorRef: MutableRefObject<monaco.editor.IStandaloneCodeEditor | null>;
 }
 
-export default function EditorBase(props: EditorBaseProps) {
+export default function EditorBase({
+  editorRef,
+  className,
+  fontFamily,
+  style,
+}: EditorBaseProps) {
   const container = useRef<HTMLDivElement>(null);
-  const editorRef = useRef<monaco.editor.IStandaloneCodeEditor | null>(null);
 
   useEffect(() => {
     if (!container.current) return;
@@ -34,12 +43,12 @@ export default function EditorBase(props: EditorBaseProps) {
       theme: 'vscode',
       language: 'lina',
       automaticLayout: true,
-      fontFamily: props.fontFamily,
+      fontFamily: fontFamily,
       'semanticHighlighting.enabled': true,
+      scrollbar: { alwaysConsumeMouseWheel: false },
     });
 
     editorRef.current = editor;
-    props.onCreate?.(editor);
 
     const resize = () => {
       editorRef.current?.layout();
@@ -51,9 +60,7 @@ export default function EditorBase(props: EditorBaseProps) {
       div.removeEventListener('resize', resize);
       editor.dispose();
     };
-  }, [props]);
+  }, [fontFamily]);
 
-  return (
-    <div ref={container} className={props.className} style={props.style} />
-  );
+  return <div ref={container} className={className} style={style} />;
 }
