@@ -104,37 +104,23 @@ impl<'a> Lexer<'a> {
 
     fn consume_number(&mut self) -> Result<Literal<'a>> {
         let start = self.position;
-        let mut state: u8 = 1;
+        enum States {
+            S1,
+            S2,
+            S3,
+        }
+        let mut state = States::S1;
 
         while let Some(c) = self.curr_char {
-            match state {
-                1 => {
-                    if c.is_ascii_digit() {
-                        self.next_char();
-                    } else if c == '.' {
-                        self.next_char();
-                        state = 2;
-                    } else {
-                        break;
-                    }
-                }
-                2 => {
-                    if c.is_ascii_digit() {
-                        self.next_char();
-                        state = 3;
-                    } else {
-                        break;
-                    }
-                }
-                3 => {
-                    if c.is_ascii_digit() {
-                        self.next_char();
-                    } else {
-                        break;
-                    }
-                }
-                _ => unreachable!(),
+            match (&state, c) {
+                (States::S1, c) if c.is_ascii_digit() => {}
+                (States::S1, '.') => state = States::S2,
+                (States::S2, c) if c.is_ascii_digit() => state = States::S3,
+                (States::S3, c) if c.is_ascii_digit() => {}
+                _ => break,
             }
+
+            self.next_char();
         }
 
         let string = if let Some(..) = self.curr_char {
@@ -144,7 +130,7 @@ impl<'a> Lexer<'a> {
         };
 
         match state {
-            1 => {
+            States::S1 => {
                 let inteiro = string.parse().map_err(|err| LexicalError {
                     row: self.line_num,
                     col: start - self.line_start,
@@ -152,8 +138,12 @@ impl<'a> Lexer<'a> {
                 })?;
                 Ok(Literal::Inteiro(inteiro))
             }
-            2 => self.new_error("esperado número após ponto (.)"),
-            3 => {
+            States::S2 => Err(LexicalError {
+                row: self.line_num,
+                col: start - self.line_start,
+                msg: format!("esperado numero após ponto: {string}"),
+            }),
+            States::S3 => {
                 let decimal = string.parse().map_err(|err| LexicalError {
                     row: self.line_num,
                     col: start - self.line_start,
@@ -161,7 +151,6 @@ impl<'a> Lexer<'a> {
                 })?;
                 Ok(Literal::Decimal(decimal))
             }
-            _ => unreachable!(),
         }
     }
 
