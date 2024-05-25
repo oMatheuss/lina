@@ -276,6 +276,46 @@ impl<'a> Parser<'a> {
         Ok(stmt)
     }
 
+    fn parse_atrib(
+        &mut self,
+        lhs: Expression<'a>,
+        rhs: Expression<'a>,
+        ope: Operador,
+    ) -> std::result::Result<Expression<'a>, String> {
+        if let Expression::Identifier(..) = &lhs {
+            let lhs_typ = lhs.get_type();
+            let rhs_typ = rhs.get_type();
+
+            let mut right = rhs;
+
+            let typ = match (&lhs_typ, &rhs_typ) {
+                (x, y) if x == y => x.clone(),
+                (Type::Integer, Type::Real) => {
+                    right = Expression::Cast(Box::new(right), Type::Integer);
+                    Type::Integer
+                }
+                (Type::Real, Type::Integer) => {
+                    right = Expression::Cast(Box::new(right), Type::Real);
+                    Type::Real
+                }
+                (Type::Text, Type::Integer | Type::Real | Type::Boolean) => {
+                    right = Expression::Cast(Box::new(right), Type::Text);
+                    Type::Text
+                }
+                _ => Err(format!("tipos incompatíveis {lhs_typ} e {rhs_typ}"))?,
+            };
+
+            Ok(Expression::BinOp {
+                typ,
+                ope,
+                lhs: Box::new(lhs),
+                rhs: Box::new(right),
+            })
+        } else {
+            Err(format!("lado esquerdo deve ser um identificador"))
+        }
+    }
+
     fn parse_binop(
         &mut self,
         lhs: Expression<'a>,
@@ -391,23 +431,15 @@ impl<'a> Parser<'a> {
                 prec
             };
 
-            if let Expression::Identifier(idt, _) = lhs.clone() {
-                self.find_symbol(idt).ok_or_else(|| SyntaxError {
-                    pos: pos.clone(),
-                    msg: format!("variavel não definida {idt}"),
-                })?;
-            } else if ope.is_atrib() {
-                Err(SyntaxError {
-                    pos: pos.clone(),
-                    msg: format!("lado esquerdo do operador {ope} deve ser um identificador"),
-                })?
-            }
-
             let rhs = self.parse_expression(min_prec)?;
 
-            lhs = self
-                .parse_binop(lhs, rhs, ope)
-                .map_err(|msg| SyntaxError { pos, msg })?;
+            lhs = if ope.is_atrib() {
+                self.parse_atrib(lhs, rhs, ope)
+                    .map_err(|msg| SyntaxError { pos, msg })?
+            } else {
+                self.parse_binop(lhs, rhs, ope)
+                    .map_err(|msg| SyntaxError { pos, msg })?
+            }
         }
 
         Ok(lhs)
