@@ -6,7 +6,7 @@ enquanto foo < 5 repetir
     inteiro bar := 5
 
     enquanto bar > 1 repetir
-        saida := bar
+        saida(bar)
         bar -= foo
     fim
 

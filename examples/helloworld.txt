@@ -1,2 +1,2 @@
 programa HelloWorld
-saida := "Hello, World!"
+saida("Hello, World")
