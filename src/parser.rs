@@ -35,9 +35,27 @@ pub struct Parser<'a> {
 
 impl<'a> Parser<'a> {
     pub fn new(tokens: Vec<TokenDef<'a>>) -> Self {
+        let mut globals = TokenTable::new();
+
+        globals.insert(
+            "saida",
+            Symbol {
+                pos: TokenPos::default(),
+                typ: Type::Void,
+            },
+        );
+
+        globals.insert(
+            "entrada",
+            Symbol {
+                pos: TokenPos::default(),
+                typ: Type::Void,
+            },
+        );
+
         Parser {
             tokens: tokens.into_iter().peekable(),
-            symbols: vec![TokenTable::new()],
+            symbols: vec![globals],
         }
     }
 
@@ -185,12 +203,6 @@ impl<'a> Parser<'a> {
 
                     SyntaxTree::Assign { pos, idt, exp, typ }
                 }
-            }
-            Token::Identificador("saida") => {
-                let _ = self.consume_identifier()?;
-                self.consume_invariant(Token::Operador(Operador::Atrib))?;
-                let expr = self.parse_expression(1)?;
-                SyntaxTree::Print(expr)
             }
             Token::Enquanto => {
                 self.consume_invariant(Token::Enquanto)?;
@@ -381,9 +393,71 @@ impl<'a> Parser<'a> {
         })
     }
 
+    fn parse_args(&mut self) -> Result<Vec<Expression<'a>>> {
+        let open_paren = self.advance()?;
+
+        enum States {
+            S1,
+            S2,
+            S3,
+            S4,
+        }
+
+        let mut state: States = States::S1;
+        let mut arg = Vec::new();
+        while let Some(lookahead) = self.peek() {
+            match (&state, &lookahead.tok) {
+                (States::S1 | States::S2, Token::Delimitador(Delimitador::FParen)) => {
+                    _ = self.advance(); // discard parenthesis
+                    state = States::S4;
+                    break;
+                }
+                (States::S1 | States::S3, _) => {
+                    arg.push(self.parse_expression(1)?);
+                    state = States::S2;
+                }
+                (States::S2, Token::Delimitador(Delimitador::Virgula)) => {
+                    _ = self.advance(); // discard comma
+                    state = States::S3;
+                }
+                (States::S2, ..) => Err(SyntaxError {
+                    pos: lookahead.pos.clone(),
+                    msg: "experado parênteses de fechamento".into(),
+                })?,
+                (States::S4, ..) => unreachable!(),
+            }
+        }
+
+        match state {
+            States::S4 => Ok(arg),
+            _ => Err(SyntaxError {
+                pos: open_paren.pos,
+                msg: "experado parênteses de fechamento".into(),
+            })?,
+        }
+    }
+
     fn parse_atom(&mut self) -> Result<Expression<'a>> {
         let TokenDef { tok, pos } = self.advance()?;
+        let lookahead = self.peek().and_then(|x| Some(&x.tok));
+
         let expression = match tok {
+            Token::Identificador(idt)
+                if matches!(lookahead, Some(Token::Delimitador(Delimitador::AParen))) =>
+            {
+                let arg = self.parse_args()?;
+
+                let symb = self.find_symbol(idt).ok_or_else(|| SyntaxError {
+                    pos,
+                    msg: format!("função não definida {idt}"),
+                })?;
+
+                Expression::Function {
+                    idt,
+                    arg,
+                    ret: symb.typ.clone(),
+                }
+            }
             Token::Identificador(idt) => {
                 let symb = self.find_symbol(idt).ok_or_else(|| SyntaxError {
                     pos,

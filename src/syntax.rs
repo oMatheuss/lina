@@ -14,7 +14,7 @@ pub enum Type {
     Real,
     Text,
     Boolean,
-    Vector,
+    Void,
 }
 
 #[derive(Debug)]
@@ -25,7 +25,6 @@ pub enum SyntaxTree<'a> {
         idt: &'a str,
         exp: Expression<'a>,
     },
-    Print(Expression<'a>),
     Expr(Expression<'a>),
     SeStmt {
         exp: Expression<'a>,
@@ -73,6 +72,11 @@ pub enum Expression<'a> {
         rhs: Box<Expression<'a>>,
     },
     Cast(Box<Expression<'a>>, Type),
+    Function {
+        idt: &'a str,
+        arg: Vec<Expression<'a>>,
+        ret: Type,
+    },
 }
 
 impl<'a> Expression<'a> {
@@ -87,6 +91,7 @@ impl<'a> Expression<'a> {
             Self::Identifier(_, typ) => typ.clone(),
             Self::BinOp { typ, .. } => typ.clone(),
             Self::Cast(_, typ) => typ.clone(),
+            Self::Function { ret, .. } => ret.clone(),
         }
     }
 }
@@ -110,7 +115,7 @@ impl Display for Type {
             Type::Real => write!(f, "real"),
             Type::Text => write!(f, "texto"),
             Type::Boolean => write!(f, "booleano"),
-            Type::Vector => write!(f, "vetor"),
+            Type::Void => write!(f, "vazio"),
         }
     }
 }
@@ -152,9 +157,6 @@ impl<'a> Display for SyntaxTree<'a> {
             SyntaxTree::Expr(expr) => {
                 writeln!(f, "{expr}")
             }
-            SyntaxTree::Print(expr) => {
-                writeln!(f, "saida := {expr}")
-            }
         }
     }
 }
@@ -183,6 +185,14 @@ impl<'a> Display for Expression<'a> {
             }
             Expression::Cast(exp, typ) => {
                 write!(f, "({typ}){exp}")
+            }
+            Expression::Function { idt, arg, .. } => {
+                let arg_list = arg
+                    .iter()
+                    .map(ToString::to_string)
+                    .collect::<Vec<String>>()
+                    .join(", ");
+                write!(f, "{idt}({arg_list})")
             }
         }
     }

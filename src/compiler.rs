@@ -100,47 +100,36 @@ impl<'a> Compiler<'a> {
 
     pub fn compile_instruction(&mut self, instr: &'a SyntaxTree) {
         match instr {
-            SyntaxTree::Assign {
-                idt: ident,
-                exp: expr,
-                pos: _,
-                typ: _,
-            } => {
-                let addr = self.set_var(ident);
-                self.compile_expr(expr);
+            SyntaxTree::Assign { idt, exp, .. } => {
+                let addr = self.set_var(idt);
+                self.compile_expr(exp);
                 self.op_store(addr);
             }
-            SyntaxTree::SeStmt {
-                exp: expr,
-                blk: block,
-            } => {
-                self.compile_expr(expr);
+            SyntaxTree::SeStmt { exp, blk } => {
+                self.compile_expr(exp);
                 self.op(OpCode::JmpF); // jump if expression is false
 
                 let jmp_offset_pos = self.bytecode.len(); // offset pos
                 self.push_offset(0); // placeholder for jump offset
 
                 let start = self.bytecode.len(); // start of block
-                self.compile_block(block);
+                self.compile_block(blk);
                 let end = self.bytecode.len(); // end of block
 
                 let jmp_offset = (end - start) as isize; // length of block
                 self.insert_offset(jmp_offset, jmp_offset_pos); // jump over the block
             }
-            SyntaxTree::EnquantoStmt {
-                exp: expr,
-                blk: block,
-            } => {
+            SyntaxTree::EnquantoStmt { exp, blk } => {
                 let start = self.bytecode.len(); // start while expression
 
-                self.compile_expr(expr);
+                self.compile_expr(exp);
                 self.op(OpCode::JmpF);
 
                 let jmpf_offset_pos = self.bytecode.len();
                 self.push_offset(0); // placeholder for the jump out
 
                 let block_start = self.bytecode.len();
-                self.compile_block(block);
+                self.compile_block(blk);
                 self.op(OpCode::Jmp);
 
                 let end = self.bytecode.len(); //  end while expression
@@ -192,11 +181,9 @@ impl<'a> Compiler<'a> {
             }
             SyntaxTree::Expr(expr) => {
                 self.compile_expr(expr);
-                self.op(OpCode::Pop);
-            }
-            SyntaxTree::Print(expr) => {
-                self.compile_expr(expr);
-                self.op(OpCode::Write);
+                if expr.get_type() != Type::Void {
+                    self.op(OpCode::Pop);
+                }
             }
         }
     }
@@ -224,16 +211,11 @@ impl<'a> Compiler<'a> {
     pub fn compile_expr(&mut self, expr: &Expression) {
         match expr {
             Expression::Literal(literal) => self.compile_literal(literal),
-            Expression::Identifier(idt, _) => {
+            Expression::Identifier(idt, ..) => {
                 let addr = self.get_var(idt);
                 self.op_load(addr);
             }
-            Expression::BinOp {
-                ope,
-                lhs,
-                rhs,
-                typ: _,
-            } => {
+            Expression::BinOp { ope, lhs, rhs, .. } => {
                 // Atrib (:=) does not need a left hand side
                 if *ope != Operador::Atrib {
                     self.compile_expr(lhs);
@@ -280,6 +262,17 @@ impl<'a> Compiler<'a> {
                     _ => panic!("ERRO: nenhuma função de cast para o tipo: {typ}"),
                 }
             }
+            Expression::Function {
+                idt: "saida", arg, ..
+            } => {
+                for exp in arg {
+                    self.compile_expr(exp);
+                    self.op(OpCode::Write);
+                }
+                self.compile_literal(&Literal::Texto("\n"));
+                self.op(OpCode::Write);
+            }
+            Expression::Function { .. } => todo!(),
         }
     }
 }

@@ -195,6 +195,9 @@ pub enum Delimitador {
     FChave,
     AColch,
     FColch,
+
+    Virgula,
+    PontoVirgula,
 }
 
 impl Display for Delimitador {
@@ -206,6 +209,8 @@ impl Display for Delimitador {
             Delimitador::FChave => write!(f, "}}"),
             Delimitador::AColch => write!(f, "["),
             Delimitador::FColch => write!(f, "]"),
+            Delimitador::Virgula => write!(f, ","),
+            Delimitador::PontoVirgula => write!(f, ";"),
         }
     }
 }

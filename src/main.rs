@@ -21,5 +21,11 @@ fn main() {
         stdout: std::io::stdout(),
     };
 
-    _ = exec.run();
+    if let Some(x) = args.get(2) {
+        if x == "-d" {
+            _ = exec.decompile();
+        }
+    } else {
+        _ = exec.run();
+    }
 }

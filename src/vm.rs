@@ -641,7 +641,7 @@ impl<'a> LinaVm<'a> {
 
                 OpCode::Write => {
                     let value = self.pop();
-                    writeln!(stdout, "{value}")?;
+                    write!(stdout, "{value}")?;
                 }
                 OpCode::Read => todo!(),
             }

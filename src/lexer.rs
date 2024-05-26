@@ -266,7 +266,7 @@ impl<'a> Lexer<'a> {
                     pos,
                 }))
             }
-            '(' | ')' | '{' | '}' | '[' | ']' => {
+            '(' | ')' | '{' | '}' | '[' | ']' | ',' | ';' => {
                 self.next_char();
                 let del = match c {
                     '(' => Delimitador::AParen,
@@ -275,6 +275,8 @@ impl<'a> Lexer<'a> {
                     '}' => Delimitador::FChave,
                     '[' => Delimitador::AColch,
                     ']' => Delimitador::FColch,
+                    ',' => Delimitador::Virgula,
+                    ';' => Delimitador::PontoVirgula,
                     _ => unreachable!(),
                 };
 
