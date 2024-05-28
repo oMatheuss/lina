@@ -660,7 +660,14 @@ impl<'a> LinaVm<'a> {
                 OpCode::Const => {
                     let index = self.next_address();
                     let value = &self.constants[index];
-                    writeln!(stdout, "{opcode}\t{index:#02x}\t{value}")?;
+                    let fmt_value = match value {
+                        LinaValue::Int32(value) => format!("{}i32", value),
+                        LinaValue::Float32(value) => format!("{}f32", value),
+                        LinaValue::String(value) => format!("\"{}\"", value.escape_default()),
+                        LinaValue::Boolean(value) => format!("{}", value),
+                        LinaValue::Address(value) => format!("{:#02x}", value),
+                    };
+                    writeln!(stdout, "{opcode}\t{index:#02x}\t{fmt_value}")?;
                 }
                 OpCode::Jmp => {
                     let index = self.next_offset();

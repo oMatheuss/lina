@@ -111,7 +111,7 @@ impl<'a> Parser<'a> {
         } else {
             Err(SyntaxError {
                 pos,
-                msg: format!("esperado identificador, encontrou {:?}", tok),
+                msg: format!("esperado identificador, encontrou {}", tok),
             })
         }
     }
@@ -123,7 +123,7 @@ impl<'a> Parser<'a> {
         } else {
             Err(SyntaxError {
                 pos,
-                msg: format!("esperado literal, encontrou {:?}", tok),
+                msg: format!("esperado literal, encontrou {}", tok),
             })
         }
     }
@@ -433,7 +433,7 @@ impl<'a> Parser<'a> {
             _ => Err(SyntaxError {
                 pos: open_paren.pos,
                 msg: "experado parênteses de fechamento".into(),
-            })?,
+            }),
         }
     }
 
