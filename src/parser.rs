@@ -1,6 +1,5 @@
 use std::collections::HashMap;
 use std::iter::Peekable;
-use std::mem;
 use std::vec::IntoIter;
 
 use crate::syntax::{Block, Expression, Program, SyntaxTree, Type};
@@ -94,7 +93,7 @@ impl<'a> Parser<'a> {
 
     fn consume_invariant(&mut self, expected: Token<'a>) -> Result<()> {
         let TokenDef { tok, pos } = self.advance()?;
-        if mem::discriminant(&tok) == mem::discriminant(&expected) {
+        if tok == expected {
             Ok(())
         } else {
             Err(SyntaxError {
