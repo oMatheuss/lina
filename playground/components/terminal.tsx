@@ -40,8 +40,8 @@ export function Terminal({
   };
 
   return (
-    <div className="flex flex-col bg-slate-600 rounded-md border-slate-600 border-4">
-      <header className="flex w-full py-2">
+    <div className="min-h-[500px] flex flex-col bg-slate-600 rounded-md border-slate-600 border-4">
+      <header className="flex w-full p-2 rounded-t-md bg-[#1e1e1e] mb-1">
         <TerminalSquareIcon className="inline mr-2 align-middle" />
         <h3 className="inline align-middle font-medium">TERMINAL</h3>
       </header>
@@ -57,13 +57,13 @@ export function Terminal({
       ></textarea>
       <div className="flex mt-1">
         <input
-          className="w-full mr-1 bg-[#1e1e1e] text-slate-200 focus:outline-none px-3 py-2 font-mono"
+          className="w-full mr-1 rounded-bl-md bg-[#1e1e1e] text-slate-200 focus:outline-none px-3 py-2 font-mono"
           value={prompt}
           onChange={(e) => setPrompt(e.target.value)}
         />
         <button
           type="button"
-          className="px-2 bg-[#1e1e1e]"
+          className="px-2 rounded-br-md bg-[#1e1e1e]"
           onClick={handlePrompt}
           disabled={!enablePrompt}
         >

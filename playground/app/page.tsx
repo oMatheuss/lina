@@ -52,8 +52,8 @@ export default function Home() {
   };
 
   return (
-    <main className="min-h-dvh mx-4 flex flex-col">
-      <div className="flex py-4 gap-4">
+    <main className="min-h-dvh mx-4 pb-4 flex flex-col">
+      <div className="flex flex-col sm:flex-row py-4 gap-4">
         <Image
           className="h-10 w-10"
           src="logo.png"
@@ -77,7 +77,7 @@ export default function Home() {
         </button>
         <button
           onClick={() => setTerminal('')}
-          className="h-10 rounded-md bg-indigo-500 px-2 text-sm ml-auto hover:bg-indigo-600 whitespace-nowrap"
+          className="h-10 rounded-md bg-indigo-500 px-2 text-sm sm:ml-auto hover:bg-indigo-600 whitespace-nowrap"
         >
           <Eraser className="inline mr-2 align-middle" />
           <span className="inline align-middle">Limpar</span>
@@ -86,7 +86,7 @@ export default function Home() {
       <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
         <Editor
           editorRef={editorRef}
-          className="min-h-[500px] h-[calc(100dvh-6.5rem)] border-4 border-slate-600 rounded-md"
+          className="min-h-[500px] h-[calc(100dvh-5.5rem)] border-4 border-slate-600 rounded-md"
         />
         <Terminal
           value={terminal}
