@@ -1,0 +1,12 @@
+programa Euler
+
+real euler
+
+para i := 1 ate 11 repetir
+    inteiro fatorial := 1
+    inteiro j := 1
+    enquanto (j += 1) < i repetir fatorial *= j fim
+    euler += 1.0 / fatorial
+fim
+
+saida(euler)

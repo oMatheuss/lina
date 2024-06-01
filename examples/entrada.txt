@@ -1,0 +1,11 @@
+programa Entrada
+
+real valor
+real soma
+
+enquanto soma < 100 repetir
+    entrada(valor)
+    soma += valor
+    saida("Você informou: ", valor)
+    saida("A soma atual é: ", soma)
+fim
