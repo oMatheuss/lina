@@ -4,12 +4,17 @@ use crate::syntax::{Block, Expression, Program, SyntaxTree, Type};
 use crate::token::{Literal, Operador};
 use crate::vm::{LinaValue, OpCode};
 
+pub struct ByteCode {
+    pub bytecode: Vec<u8>,
+    pub constants: Vec<LinaValue>,
+}
+
 type VarTable<'a> = HashMap<&'a str, usize>;
 
 #[derive(Debug)]
 pub struct Compiler<'a> {
-    pub bytecode: Vec<u8>,
-    pub constants: Vec<LinaValue>,
+    bytecode: Vec<u8>,
+    constants: Vec<LinaValue>,
     scopes: Vec<VarTable<'a>>,
     vi: usize,
 }
@@ -85,9 +90,14 @@ impl<'a> Compiler<'a> {
         panic!("ERRO: variable '{name}' não definida");
     }
 
-    pub fn compile(&mut self, program: &'a Program<'a>) {
+    pub fn compile(mut self, program: &'a Program<'a>) -> ByteCode {
         self.compile_block(&program.block);
         self.bytecode.push(OpCode::Halt as u8);
+
+        ByteCode {
+            bytecode: self.bytecode,
+            constants: self.constants,
+        }
     }
 
     fn compile_block(&mut self, block: &'a Block) {
@@ -98,7 +108,7 @@ impl<'a> Compiler<'a> {
         self.exit_scope();
     }
 
-    pub fn compile_instruction(&mut self, instr: &'a SyntaxTree) {
+    fn compile_instruction(&mut self, instr: &'a SyntaxTree) {
         match instr {
             SyntaxTree::Assign { idt, exp, .. } => {
                 let addr = self.set_var(idt);
@@ -188,7 +198,7 @@ impl<'a> Compiler<'a> {
         }
     }
 
-    pub fn compile_literal(&mut self, literal: &Literal) {
+    fn compile_literal(&mut self, literal: &Literal) {
         let value = match *literal {
             Literal::Decimal(number) => LinaValue::Float32(number),
             Literal::Inteiro(number) => LinaValue::Int32(number),
@@ -208,7 +218,7 @@ impl<'a> Compiler<'a> {
         self.op_const(addr);
     }
 
-    pub fn compile_expr(&mut self, expr: &Expression) {
+    fn compile_expr(&mut self, expr: &Expression) {
         match expr {
             Expression::Literal(literal) => self.compile_literal(literal),
             Expression::Identifier(idt, ..) => {
@@ -272,13 +282,32 @@ impl<'a> Compiler<'a> {
                 self.compile_literal(&Literal::Texto("\n"));
                 self.op(OpCode::Write);
             }
+            Expression::Function {
+                idt: "entrada",
+                arg,
+                ..
+            } => {
+                for exp in arg {
+                    let Expression::Identifier(idt, typ) = exp else {
+                        panic!("ERRO: argumento deve ser um identificador")
+                    };
+
+                    let addr = self.get_var(idt);
+                    match typ {
+                        Type::Integer => self.op(OpCode::ReadI),
+                        Type::Real => self.op(OpCode::ReadF),
+                        Type::Text => self.op(OpCode::ReadL),
+                        _ => panic!("ERRO: leitura não suportada para o tipo: {typ}"),
+                    }
+
+                    self.op_store(addr);
+                }
+            }
             Expression::Function { .. } => todo!(),
         }
     }
 }
 
-pub fn compile<'a>(program: &'a Program<'a>) -> Compiler<'a> {
-    let mut compiler = Compiler::new();
-    compiler.compile(program);
-    compiler
+pub fn compile<'a>(program: &'a Program<'a>) -> ByteCode {
+    Compiler::new().compile(program)
 }

@@ -1,5 +1,7 @@
 use std::fmt::Display;
-use std::io::Write;
+use std::io::{Read, Write};
+
+use crate::compiler::ByteCode;
 
 #[repr(u8)]
 #[derive(Debug)]
@@ -38,7 +40,10 @@ pub enum OpCode {
     LE,
     GE,
 
-    Read,
+    ReadL,
+    ReadI,
+    ReadF,
+
     Write,
 
     Load,
@@ -74,7 +79,9 @@ impl Display for OpCode {
             OpCode::GT => write!(f, "GT"),
             OpCode::LE => write!(f, "LE"),
             OpCode::GE => write!(f, "GE"),
-            OpCode::Read => write!(f, "READ"),
+            OpCode::ReadL => write!(f, "READL"),
+            OpCode::ReadI => write!(f, "READI"),
+            OpCode::ReadF => write!(f, "READF"),
             OpCode::Write => write!(f, "WRITE"),
             OpCode::Load => write!(f, "LOAD"),
             OpCode::Store => write!(f, "STORE"),
@@ -116,8 +123,14 @@ pub enum LinaValue {
     Int32(i32),
     Float32(f32),
     String(String),
-    Boolean(bool),
     Address(usize),
+    Boolean(bool),
+}
+
+impl Default for LinaValue {
+    fn default() -> Self {
+        Self::Boolean(false)
+    }
 }
 
 pub struct TypeError(String);
@@ -252,6 +265,9 @@ pub enum RuntimeError {
     CodeError(CodeError),
     TypeError(TypeError),
     IoError(std::io::Error),
+    FromUtf8Error(std::string::FromUtf8Error),
+    ParseIntError(std::num::ParseIntError),
+    ParseFloatError(std::num::ParseFloatError),
 }
 
 impl From<TypeError> for RuntimeError {
@@ -272,36 +288,114 @@ impl From<std::io::Error> for RuntimeError {
     }
 }
 
+impl From<std::string::FromUtf8Error> for RuntimeError {
+    fn from(value: std::string::FromUtf8Error) -> Self {
+        Self::FromUtf8Error(value)
+    }
+}
+
+impl From<std::num::ParseIntError> for RuntimeError {
+    fn from(value: std::num::ParseIntError) -> Self {
+        Self::ParseIntError(value)
+    }
+}
+
+impl From<std::num::ParseFloatError> for RuntimeError {
+    fn from(value: std::num::ParseFloatError) -> Self {
+        Self::ParseFloatError(value)
+    }
+}
+
 impl Display for RuntimeError {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         match self {
             RuntimeError::CodeError(err) => write!(f, "{err}"),
             RuntimeError::TypeError(err) => write!(f, "{err}"),
             RuntimeError::IoError(err) => write!(f, "{err}"),
+            RuntimeError::FromUtf8Error(err) => write!(f, "{err}"),
+            RuntimeError::ParseIntError(err) => write!(f, "{err}"),
+            RuntimeError::ParseFloatError(err) => write!(f, "{err}"),
         }
     }
 }
 
-type VmResult = Result<(), RuntimeError>;
-
-#[derive(Debug)]
-pub struct LinaVm<'a> {
-    bytecode: &'a [u8], // bytecode to be executed
-
-    pc: usize, // program counter
-
-    stack: Vec<LinaValue>,      // operand stack
-    constants: &'a [LinaValue], // constant pool
+#[derive(PartialEq, Eq)]
+pub enum VmState {
+    Idle,      // vm is ready to start
+    Executing, // while this, execute the bytecode
+    WillRead,  // next instruction is to read
+    WillWrite, // next instruction is to write
 }
 
-impl<'a> LinaVm<'a> {
-    pub fn new(bytecode: &'a [u8], constants: &'a [LinaValue]) -> Self {
+impl Display for VmState {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        match self {
+            VmState::Idle => write!(f, "idle"),
+            VmState::Executing => write!(f, "executing"),
+            VmState::WillRead => write!(f, "will-read"),
+            VmState::WillWrite => write!(f, "will-write"),
+        }
+    }
+}
+
+impl Default for VmState {
+    fn default() -> Self {
+        VmState::Idle
+    }
+}
+
+type VmResult<T> = Result<T, RuntimeError>;
+
+pub struct LinaVm<In, Out>
+where
+    In: Read,
+    Out: Write,
+{
+    bytecode: Vec<u8>,         // bytecode to be executed
+    constants: Vec<LinaValue>, // constant pool
+    pc: usize,                 // program counter
+    stack: Vec<LinaValue>,     // operand stack
+    pub stdin: In,             // standard input
+    pub stdout: Out,           // standard output
+}
+
+impl<In, Out> LinaVm<In, Out>
+where
+    In: Read,
+    Out: Write,
+{
+    pub fn new(code: ByteCode, stdin: In, stdout: Out) -> Self {
         Self {
-            bytecode,
+            bytecode: code.bytecode,
+            constants: code.constants,
             pc: 0,
             stack: Vec::with_capacity(512),
-            constants,
+            stdin,
+            stdout,
         }
+    }
+
+    pub fn empty(stdin: In, stdout: Out) -> Self {
+        Self {
+            bytecode: Vec::default(),
+            constants: Vec::default(),
+            pc: 0,
+            stack: Vec::with_capacity(512),
+            stdin,
+            stdout,
+        }
+    }
+
+    pub fn start(&mut self, code: ByteCode) {
+        self.bytecode = code.bytecode;
+        self.constants = code.constants;
+        self.pc = 0;
+        self.stack.clear();
+    }
+
+    pub fn reset(&mut self) {
+        self.pc = 0;
+        self.stack.clear();
     }
 
     fn push(&mut self, value: LinaValue) {
@@ -312,36 +406,38 @@ impl<'a> LinaVm<'a> {
         self.stack.pop().expect("stack should not be empty")
     }
 
-    fn next_byte(&mut self) -> u8 {
-        assert!(self.pc < self.bytecode.len());
-        let byte = self.bytecode[self.pc];
-        self.pc += 1;
-        byte
+    fn curr_byte(&mut self) -> u8 {
+        self.bytecode[self.pc]
     }
 
-    fn next_address(&mut self) -> usize {
-        let bytes = core::array::from_fn(|_i| self.next_byte());
+    fn next_byte(&mut self) -> u8 {
+        assert!(self.pc < self.bytecode.len());
+        self.pc += 1;
+        self.bytecode[self.pc]
+    }
+
+    fn next_addr(&mut self) -> usize {
+        let bytes = core::array::from_fn(|_| self.next_byte());
         usize::from_ne_bytes(bytes)
     }
 
-    fn next_offset(&mut self) -> isize {
-        let bytes = core::array::from_fn(|_i| self.next_byte());
+    fn next_offs(&mut self) -> isize {
+        let bytes = core::array::from_fn(|_| self.next_byte());
         isize::from_ne_bytes(bytes)
     }
 
     fn store(&mut self, value: LinaValue, address: usize) {
-        while self.stack.len() < address + 1 {
-            self.stack.push(0.0.into());
+        if address >= self.stack.len() {
+            self.stack.resize_with(address + 1, Default::default);
         }
-
         self.stack[address] = value;
     }
 
-    fn load(&mut self, address: usize) -> LinaValue {
-        self.stack[address].clone()
+    fn load(&mut self, address: usize) -> &LinaValue {
+        &self.stack[address]
     }
 
-    fn binary_op(&mut self, op: OpCode) -> VmResult {
+    fn binop(&mut self, op: OpCode) -> VmResult<()> {
         let rhs = self.pop();
         let lhs = self.pop();
 
@@ -554,111 +650,155 @@ impl<'a> LinaVm<'a> {
         Ok(())
     }
 
-    pub fn run(&mut self, stdout: &mut dyn Write) -> VmResult {
+    fn read(&mut self, stopc: &[u8]) -> Result<String, RuntimeError> {
+        let mut buff = Vec::new();
+        let mut byte = [0_u8];
+
         loop {
-            let opcode: OpCode = self.next_byte().try_into()?;
+            let n = self.stdin.read(&mut byte)?;
+            if n == 0 || stopc.contains(&byte[0]) {
+                break;
+            }
+            buff.push(byte[0]);
+        }
 
-            match opcode {
-                OpCode::Halt => return Ok(()),
+        let value = String::from_utf8(buff)?;
+        Ok(value)
+    }
 
-                OpCode::Const => {
-                    let index = self.next_address();
-                    let constant = &self.constants[index];
-                    self.push(constant.clone());
-                }
-                OpCode::Dup => {
-                    let top = self.pop();
-                    self.push(top.clone());
-                    self.push(top);
-                }
-                OpCode::Pop => _ = self.pop(),
+    pub fn run_instr(&mut self) -> VmResult<VmState> {
+        let opcode: OpCode = self.curr_byte().try_into()?;
 
-                OpCode::CastI => {
-                    let top = self.pop();
-                    let val: i32 = top.try_into()?;
-                    self.push(val.into());
-                }
-                OpCode::CastF => {
-                    let top = self.pop();
-                    let val: f32 = top.try_into()?;
-                    self.push(val.into());
-                }
-                OpCode::CastS => {
-                    let top = self.pop();
-                    let val: String = top.into();
-                    self.push(val.into());
-                }
+        match opcode {
+            OpCode::Halt => return Ok(VmState::Idle),
 
-                OpCode::Add
-                | OpCode::Sub
-                | OpCode::Mul
-                | OpCode::Div
-                | OpCode::Rem
-                | OpCode::Or
-                | OpCode::And
-                | OpCode::Eq
-                | OpCode::NE
-                | OpCode::LT
-                | OpCode::GT
-                | OpCode::LE
-                | OpCode::GE => self.binary_op(opcode)?,
+            OpCode::Const => {
+                let index = self.next_addr();
+                let constant = &self.constants[index];
+                self.push(constant.clone());
+            }
+            OpCode::Dup => {
+                let top = self.pop();
+                self.push(top.clone());
+                self.push(top);
+            }
+            OpCode::Pop => _ = self.pop(),
 
-                // Controle de fluxo
-                OpCode::Jmp => {
-                    let offset = self.next_offset();
+            OpCode::CastI => {
+                let top = self.pop();
+                let val: i32 = top.try_into()?;
+                self.push(val.into());
+            }
+            OpCode::CastF => {
+                let top = self.pop();
+                let val: f32 = top.try_into()?;
+                self.push(val.into());
+            }
+            OpCode::CastS => {
+                let top = self.pop();
+                let val: String = top.into();
+                self.push(val.into());
+            }
+
+            OpCode::Add
+            | OpCode::Sub
+            | OpCode::Mul
+            | OpCode::Div
+            | OpCode::Rem
+            | OpCode::Or
+            | OpCode::And
+            | OpCode::Eq
+            | OpCode::NE
+            | OpCode::LT
+            | OpCode::GT
+            | OpCode::LE
+            | OpCode::GE => self.binop(opcode)?,
+
+            // Controle de fluxo
+            OpCode::Jmp => {
+                let offset = self.next_offs();
+                self.pc = (self.pc as isize + offset) as usize;
+            }
+            OpCode::JmpT => {
+                let condition: bool = self.pop().try_into()?;
+                let offset = self.next_offs();
+
+                if condition {
                     self.pc = (self.pc as isize + offset) as usize;
                 }
-                OpCode::JmpT => {
-                    let condition: bool = self.pop().try_into()?;
-                    let offset = self.next_offset();
+            }
+            OpCode::JmpF => {
+                let condition: bool = self.pop().try_into()?;
+                let offset = self.next_offs();
 
-                    if condition {
-                        self.pc = (self.pc as isize + offset) as usize;
-                    }
+                if !condition {
+                    self.pc = (self.pc as isize + offset) as usize;
                 }
-                OpCode::JmpF => {
-                    let condition: bool = self.pop().try_into()?;
-                    let offset = self.next_offset();
+            }
 
-                    if !condition {
-                        self.pc = (self.pc as isize + offset) as usize;
-                    }
-                }
+            OpCode::Call => todo!(),
+            OpCode::Return => todo!(),
 
-                OpCode::Call => todo!(),
-                OpCode::Return => todo!(),
+            OpCode::Load => {
+                let address = self.next_addr();
+                let value = self.load(address).clone();
+                self.push(value);
+            }
+            OpCode::Store => {
+                let value = self.pop();
+                let address = self.next_addr();
+                self.store(value, address);
+            }
 
-                OpCode::Load => {
-                    let address = self.next_address();
-                    let value = self.load(address);
-                    self.push(value);
-                }
-                OpCode::Store => {
-                    let value = self.pop();
-                    let address = self.next_address();
-                    self.store(value, address);
-                }
+            OpCode::Write => {
+                let value = self.pop();
+                write!(self.stdout, "{value}")?;
+            }
+            OpCode::ReadL => {
+                let line = self.read(&[b'\n'])?;
+                self.push(LinaValue::String(line));
+            }
+            OpCode::ReadI => {
+                let value = self.read(&[b'\n', b' '])?.parse::<i32>()?;
+                self.push(LinaValue::Int32(value));
+            }
+            OpCode::ReadF => {
+                let value = self.read(&[b'\n', b' '])?.parse::<f32>()?;
+                self.push(LinaValue::Float32(value));
+            }
+        };
 
-                OpCode::Write => {
-                    let value = self.pop();
-                    write!(stdout, "{value}")?;
-                }
-                OpCode::Read => todo!(),
+        let next: OpCode = self.next_byte().try_into()?;
+
+        let state = match next {
+            OpCode::Write => VmState::WillWrite,
+            OpCode::ReadL | OpCode::ReadI | OpCode::ReadF => VmState::WillRead,
+            _ => VmState::Executing,
+        };
+
+        Ok(state)
+    }
+
+    pub fn non_stop(&mut self) -> VmResult<()> {
+        loop {
+            let vm_state = self.run_instr()?;
+            if let VmState::Idle = vm_state {
+                break Ok(());
             }
         }
     }
 
-    pub fn decompile(&mut self, stdout: &mut dyn Write) -> VmResult {
+    pub fn decompile(&mut self) -> VmResult<()> {
         loop {
             let opcode: OpCode = self.next_byte().try_into()?;
 
             match opcode {
                 OpCode::Halt => {
-                    writeln!(stdout, "{opcode}")?;
+                    writeln!(self.stdout, "{opcode}")?;
                     return Ok(());
                 }
                 OpCode::Const => {
-                    let index = self.next_address();
+                    let index = self.next_addr();
                     let value = &self.constants[index];
                     let fmt_value = match value {
                         LinaValue::Int32(value) => format!("{}i32", value),
@@ -667,31 +807,31 @@ impl<'a> LinaVm<'a> {
                         LinaValue::Boolean(value) => format!("{}", value),
                         LinaValue::Address(value) => format!("{:#02x}", value),
                     };
-                    writeln!(stdout, "{opcode}\t{index:#02x}\t{fmt_value}")?;
+                    writeln!(self.stdout, "{opcode}\t{index:#02x}\t{fmt_value}")?;
                 }
                 OpCode::Jmp => {
-                    let index = self.next_offset();
-                    writeln!(stdout, "{opcode}\t{index}")?;
+                    let index = self.next_offs();
+                    writeln!(self.stdout, "{opcode}\t{index}")?;
                 }
                 OpCode::JmpT => {
-                    let index = self.next_offset();
-                    writeln!(stdout, "{opcode}\t{index}")?;
+                    let index = self.next_offs();
+                    writeln!(self.stdout, "{opcode}\t{index}")?;
                 }
                 OpCode::JmpF => {
-                    let index = self.next_offset();
-                    writeln!(stdout, "{opcode}\t{index}")?;
+                    let index = self.next_offs();
+                    writeln!(self.stdout, "{opcode}\t{index}")?;
                 }
                 OpCode::Load => {
-                    let index = self.next_address();
-                    writeln!(stdout, "{opcode}\t{index:#02x}")?;
+                    let index = self.next_addr();
+                    writeln!(self.stdout, "{opcode}\t{index:#02x}")?;
                 }
                 OpCode::Store => {
-                    let index = self.next_address();
-                    writeln!(stdout, "{opcode}\t{index:#02x}")?;
+                    let index = self.next_addr();
+                    writeln!(self.stdout, "{opcode}\t{index:#02x}")?;
                 }
                 OpCode::Call => todo!(),
                 OpCode::Return => todo!(),
-                _ => writeln!(stdout, "{opcode}")?,
+                _ => writeln!(self.stdout, "{opcode}")?,
             }
         }
     }

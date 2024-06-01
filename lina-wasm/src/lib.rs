@@ -1,19 +1,12 @@
-use lina::LinaExec;
-use std::io::{BufWriter, Write};
+use std::collections::VecDeque;
+use std::io::{Read, Result, Write};
+use std::str;
 use wasm_bindgen::prelude::*;
 
-pub struct Terminal;
-
-impl Write for Terminal {
-    fn write(&mut self, buf: &[u8]) -> std::io::Result<usize> {
-        terminal_write(std::str::from_utf8(buf).unwrap());
-        Ok(buf.len())
-    }
-
-    fn flush(&mut self) -> std::io::Result<()> {
-        Ok(())
-    }
-}
+use lina::compiler::compile;
+use lina::lexer::{lex, LexicalError};
+use lina::parser::{parse, SyntaxError};
+use lina::vm::{LinaVm, RuntimeError, VmState};
 
 #[wasm_bindgen]
 extern "C" {
@@ -21,38 +14,107 @@ extern "C" {
     pub fn terminal_clear();
 }
 
-#[wasm_bindgen]
-pub fn compile(code: &str) {
-    let mut terminal = BufWriter::new(Terminal);
+struct Input(VecDeque<u8>);
+struct Output();
 
-    terminal_clear();
+impl Read for Input {
+    fn read(&mut self, buf: &mut [u8]) -> Result<usize> {
+        self.0.read(buf)
+    }
+}
 
-    let mut exec = LinaExec {
-        path: "main",
-        source: code,
-        stdout: &mut terminal,
-    };
+impl Write for Output {
+    fn write(&mut self, buf: &[u8]) -> Result<usize> {
+        let value = str::from_utf8(buf).unwrap_or_default();
+        terminal_write(value);
+        Ok(buf.len())
+    }
 
-    let _ = match exec.run() {
-        Ok(()) => writeln!(terminal, "compilação & execução finalizados com sucesso"),
-        Err(()) => writeln!(terminal, "compilação & execução finalizados com erro"),
-    };
+    fn flush(&mut self) -> Result<()> {
+        Ok(())
+    }
 }
 
 #[wasm_bindgen]
-pub fn decompile(code: &str) {
-    let mut terminal = BufWriter::new(Terminal);
+struct Terminal {
+    vm: LinaVm<Input, Output>,
+}
 
-    terminal_clear();
+#[wasm_bindgen]
+impl Terminal {
+    #[wasm_bindgen(constructor)]
+    #[allow(dead_code)]
+    pub fn new() -> Self {
+        Self {
+            vm: LinaVm::empty(Input(VecDeque::new()), Output()),
+        }
+    }
 
-    let mut exec = LinaExec {
-        path: "main",
-        source: code,
-        stdout: &mut terminal,
-    };
+    #[allow(dead_code)]
+    pub fn prompt(&mut self, input: &str) {
+        _ = self.vm.stdin.0.write(input.as_bytes());
+    }
 
-    let _ = match exec.decompile() {
-        Ok(()) => writeln!(terminal, "descompilação & execução finalizados com sucesso"),
-        Err(()) => writeln!(terminal, "descompilação & execução finalizados com erro"),
-    };
+    fn lex_err(&mut self, err: LexicalError) {
+        _ = writeln!(self.vm.stdout, "Erro Léxico: {}", err.msg);
+        _ = writeln!(self.vm.stdout, "main.lina:{}:{}", err.row, err.col);
+    }
+
+    fn syn_err(&mut self, err: SyntaxError) {
+        _ = writeln!(self.vm.stdout, "Erro Sintático: {}", err.msg);
+        _ = writeln!(self.vm.stdout, "main.lina:{}:{}", err.pos.row, err.pos.col);
+    }
+
+    fn run_err(&mut self, err: RuntimeError) {
+        _ = writeln!(self.vm.stdout, "Erro: {err}");
+    }
+
+    #[allow(dead_code)]
+    pub fn start(&mut self, code: &str) -> String {
+        let tkns = match lex(code) {
+            Ok(tkns) => tkns,
+            Err(err) => {
+                self.lex_err(err);
+                return Default::default();
+            }
+        };
+        let prgm = match parse(tkns) {
+            Ok(prgm) => prgm,
+            Err(err) => {
+                self.syn_err(err);
+                return Default::default();
+            }
+        };
+        let byco = compile(&prgm);
+        self.vm.start(byco);
+
+        self.resume(100)
+    }
+
+    pub fn resume(&mut self, max: i32) -> String {
+        let mut count = 0;
+        loop {
+            match self.vm.run_instr() {
+                Ok(s @ VmState::Executing) => {
+                    count += 1;
+                    if count >= max {
+                        break s.to_string();
+                    }
+                }
+                Ok(s @ VmState::WillRead) => {
+                    if self.vm.stdin.0.len() > 0 {
+                        count += 1;
+                    } else {
+                        break s.to_string();
+                    }
+                }
+                Ok(s) => break s.to_string(),
+                Err(e) => {
+                    self.run_err(e);
+                    self.vm.reset();
+                    break Default::default();
+                }
+            }
+        }
+    }
 }

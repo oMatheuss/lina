@@ -34,23 +34,23 @@ pub struct Parser<'a> {
 
 impl<'a> Parser<'a> {
     pub fn new(tokens: Vec<TokenDef<'a>>) -> Self {
-        let mut globals = TokenTable::new();
-
-        globals.insert(
-            "saida",
-            Symbol {
-                pos: TokenPos::default(),
-                typ: Type::Void,
-            },
-        );
-
-        globals.insert(
-            "entrada",
-            Symbol {
-                pos: TokenPos::default(),
-                typ: Type::Void,
-            },
-        );
+        let defaults = [
+            (
+                "saida",
+                Symbol {
+                    pos: TokenPos::default(),
+                    typ: Type::Void,
+                },
+            ),
+            (
+                "entrada",
+                Symbol {
+                    pos: TokenPos::default(),
+                    typ: Type::Void, // retornar boolean
+                },
+            ),
+        ];
+        let globals = TokenTable::from(defaults);
 
         Parser {
             tokens: tokens.into_iter().peekable(),
@@ -187,7 +187,7 @@ impl<'a> Parser<'a> {
                 } else {
                     let (typ, ini) = match decl.tok {
                         Token::Seja => Err(SyntaxError {
-                            msg: format!("declarador seja não pode ser usado sem inicializador"),
+                            msg: format!("seja não pode ser usado sem inicializador"),
                             pos: decl.pos,
                         })?,
                         Token::Inteiro => (Type::Integer, Literal::Inteiro(0)),
