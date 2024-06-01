@@ -2,33 +2,53 @@
 
 import { Editor } from '@/components/editor';
 import { Terminal } from '@/components/terminal';
-import { Binary, DeleteIcon, Eraser, PlayIcon } from 'lucide-react';
+import { Binary, Eraser, PlayIcon } from 'lucide-react';
 import type { editor } from 'monaco-editor';
-import init, { compile, decompile } from 'lina-wasm';
 import { useRef, useState } from 'react';
 import Image from 'next/image';
+import { useLina } from '@/hooks/use-lina';
 
 export default function Home() {
   const editorRef = useRef<editor.IStandaloneCodeEditor | null>(null);
+  const linaRef = useLina();
+
+  const resume = (result: string | null = null) => {
+    if (!linaRef.current) return;
+    const lina = linaRef.current;
+    result ??= lina.resume(1000);
+    window.requestAnimationFrame(function compilation(time) {
+      if (result == 'executing' || result == 'will-write') {
+        result = lina.resume(1000); // execute 1000 instructions max
+        window.requestAnimationFrame(compilation);
+      }
+    });
+  };
 
   const handleCompile = () => {
     const editor = editorRef.current;
-    if (editor === null) return;
+    const lina = linaRef.current;
+    if (editor === null || lina === null) return;
     const value = editor.getModel()?.getValue();
-    if (value) init().then(() => compile(value));
+    if (!value) return;
+
+    let result = lina.start(value);
+    resume(result);
   };
 
   const handleDecompile = () => {
     const editor = editorRef.current;
-    if (editor === null) return;
+    const terminal = linaRef.current;
+    if (editor === null || terminal == null) return;
     const value = editor.getModel()?.getValue();
-    if (value) init().then(() => decompile(value));
+    if (!value) return;
   };
 
   const [terminal, setTerminal] = useState<string>('');
 
-  const clearTerminal = () => {
-    setTerminal('');
+  const handlePrompt = (value: string) => {
+    linaRef.current?.prompt(value);
+    setTerminal((old) => old + value);
+    resume();
   };
 
   return (
@@ -56,7 +76,7 @@ export default function Home() {
           <span className="inline align-middle">DESCOMPILAR</span>
         </button>
         <button
-          onClick={clearTerminal}
+          onClick={() => setTerminal('')}
           className="h-10 rounded-md bg-indigo-500 px-2 text-sm ml-auto hover:bg-indigo-600 whitespace-nowrap"
         >
           <Eraser className="inline mr-2 align-middle" />
@@ -68,7 +88,12 @@ export default function Home() {
           editorRef={editorRef}
           className="min-h-[500px] h-[calc(100dvh-6.5rem)] border-4 border-slate-600 rounded-md"
         />
-        <Terminal value={terminal} onChange={setTerminal} />
+        <Terminal
+          value={terminal}
+          onChange={setTerminal}
+          onPrompt={handlePrompt}
+          enablePrompt={true}
+        />
       </div>
     </main>
   );
