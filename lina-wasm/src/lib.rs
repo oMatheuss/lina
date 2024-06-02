@@ -71,6 +71,8 @@ impl Terminal {
 
     #[allow(dead_code)]
     pub fn start(&mut self, code: &str) -> String {
+        self.vm.stdin.0.clear();
+
         let tkns = match lex(code) {
             Ok(tkns) => tkns,
             Err(err) => {
