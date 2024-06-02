@@ -237,47 +237,77 @@ impl<'a> Parser<'a> {
             Token::Para => {
                 self.consume_invariant(Token::Para)?;
                 let idt = self.consume_identifier()?;
+                let idt_typ = Type::Integer;
+                let idt_pos = pos.clone();
 
                 if let Some(Symbol { pos, typ }) = self.find_symbol(idt) {
                     if *typ != Type::Integer {
                         Err(SyntaxError {
-                            msg: format!("variavel {idt} não é do tipo inteiro"),
+                            msg: format!("variavel {idt} não é do tipo {idt_typ}"),
                             pos: pos.clone(),
                         })?
                     }
                 } else {
-                    self.set_symbol(idt, pos.clone(), Type::Integer);
+                    self.set_symbol(idt, idt_pos, idt_typ.clone());
                 }
 
                 let TokenDef { tok, pos } = self.advance()?;
                 let sta = match tok {
                     Token::Operador(Operador::Atrib) => {
                         let sta = self.consume_literal()?;
+                        let sta_typ = Type::from(&sta);
+                        if sta_typ != Type::Integer {
+                            return Err(SyntaxError {
+                                msg: format!("o tipo {idt_typ} não é permitido para o laço para"),
+                                pos,
+                            });
+                        }
                         self.consume_invariant(Token::Ate)?;
                         Some(sta)
                     }
                     Token::Ate => None,
-                    _ => Err(SyntaxError {
-                        msg: format!("esperado atribuição ou ate, encontrou {tok}"),
-                        pos,
-                    })?,
+                    _ => {
+                        return Err(SyntaxError {
+                            msg: format!("esperado atribuição ou ate, encontrou {tok}"),
+                            pos,
+                        })
+                    }
                 };
 
-                let lmt = self.consume_literal()?;
+                let lmt_pos = self.peek().and_then(|la| Some(la.pos.clone()));
+                let lmt = self.parse_expression(1)?;
+
+                match lmt.get_type() {
+                    Type::Integer | Type::Real | Type::Boolean => Ok(()),
+                    disallow => Err(SyntaxError {
+                        msg: format!("o tipo {disallow} não é permitido como limite"),
+                        pos: lmt_pos.unwrap(),
+                    }),
+                }?;
 
                 let TokenDef { tok, pos } = self.advance()?;
 
                 let stp = match tok {
                     Token::Incremento => {
+                        let stp_pos = self.peek().and_then(|la| Some(la.pos.clone()));
                         let stp = self.consume_literal()?;
+                        let stp_typ = Type::from(&stp);
+                        if stp_typ != Type::Integer {
+                            return Err(SyntaxError {
+                                msg: format!("tipo do incremento é incompátivel com a variável. variável: {idt_typ}, incremento: {stp_typ}"),
+                                pos: stp_pos.unwrap(),
+                            });
+                        }
                         self.consume_invariant(Token::Repetir)?;
                         Some(stp)
                     }
                     Token::Repetir => None,
-                    _ => Err(SyntaxError {
-                        msg: format!("esperado incremento ou repetir, encontrou {tok}"),
-                        pos,
-                    })?,
+                    _ => {
+                        return Err(SyntaxError {
+                            msg: format!("esperado incremento ou repetir, encontrou {tok}"),
+                            pos,
+                        });
+                    }
                 };
 
                 let blk = self.parse_block()?;
@@ -296,8 +326,10 @@ impl<'a> Parser<'a> {
                 SyntaxTree::Expr(expression)
             }
             _ => {
-                let msg = format!("token inesperado {}", token_ref.tok);
-                Err(SyntaxError { msg, pos })?
+                return Err(SyntaxError {
+                    msg: format!("token inesperado {}", token_ref.tok),
+                    pos,
+                });
             }
         };
 

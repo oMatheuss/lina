@@ -37,7 +37,7 @@ pub enum SyntaxTree<'a> {
     ParaStmt {
         idt: &'a str,
         sta: Option<Literal<'a>>,
-        lmt: Literal<'a>,
+        lmt: Expression<'a>,
         stp: Option<Literal<'a>>,
         blk: Block<'a>,
     },
@@ -82,16 +82,22 @@ pub enum Expression<'a> {
 impl<'a> Expression<'a> {
     pub fn get_type(&self) -> Type {
         match self {
-            Self::Literal(ltr) => match ltr {
-                Literal::Decimal(_) => Type::Real,
-                Literal::Inteiro(_) => Type::Integer,
-                Literal::Texto(_) => Type::Text,
-                Literal::Booleano(_) => Type::Boolean,
-            },
+            Self::Literal(ltr) => Type::from(ltr),
             Self::Identifier(_, typ) => typ.clone(),
             Self::BinOp { typ, .. } => typ.clone(),
             Self::Cast(_, typ) => typ.clone(),
             Self::Function { ret, .. } => ret.clone(),
+        }
+    }
+}
+
+impl From<&Literal<'_>> for Type {
+    fn from(value: &Literal<'_>) -> Self {
+        match value {
+            Literal::Decimal(..) => Type::Real,
+            Literal::Inteiro(..) => Type::Integer,
+            Literal::Texto(..) => Type::Text,
+            Literal::Booleano(..) => Type::Boolean,
         }
     }
 }

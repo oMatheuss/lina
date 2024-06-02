@@ -163,10 +163,19 @@ impl<'a> Compiler<'a> {
 
                 let start = self.bytecode.len();
 
-                self.op_load(addr);
-                self.compile_literal(lmt);
-                self.op(OpCode::LE);
-                self.op(OpCode::JmpF);
+                match lmt.get_type() {
+                    Type::Integer | Type::Real => {
+                        self.op_load(addr);
+                        self.compile_expr(lmt);
+                        self.op(OpCode::LE);
+                        self.op(OpCode::JmpF);
+                    }
+                    Type::Boolean => {
+                        self.compile_expr(lmt);
+                        self.op(OpCode::JmpT);
+                    }
+                    _ => panic!("ERRO: tipo não permitido como limite"),
+                };
 
                 let jmp_offset_pos = self.bytecode.len();
                 self.push_offset(0);
