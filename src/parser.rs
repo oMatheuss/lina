@@ -91,51 +91,68 @@ impl<'a> Parser<'a> {
         self.symbols.pop();
     }
 
-    fn consume_invariant(&mut self, expected: Token<'a>) -> Result<()> {
-        let TokenDef { tok, pos } = self.advance()?;
-        if tok == expected {
-            Ok(())
-        } else {
-            Err(SyntaxError {
-                pos,
-                msg: format!("esperado {}, encontrou {}", expected, tok),
-            })
+    fn consume_invariant(&mut self, expected: Token) -> Result<()> {
+        match self.tokens.next() {
+            Some(def) if def.tok == expected => Ok(()),
+            Some(def) => Err(SyntaxError {
+                pos: def.pos,
+                msg: format!("esperado {}, encontrou {}", expected, def.tok),
+            }),
+            None => Err(SyntaxError {
+                pos: TokenPos::default(),
+                msg: format!("esperado {}, encontrou o final do arquivo", expected),
+            }),
         }
     }
 
     fn consume_identifier(&mut self) -> Result<&'a str> {
-        let TokenDef { tok, pos } = self.advance()?;
-        if let Token::Identificador(ident) = tok {
-            Ok(ident)
-        } else {
-            Err(SyntaxError {
-                pos,
-                msg: format!("esperado identificador, encontrou {}", tok),
-            })
+        match self.tokens.next() {
+            Some(TokenDef {
+                tok: Token::Identificador(ident),
+                ..
+            }) => Ok(ident),
+            Some(def) => Err(SyntaxError {
+                pos: def.pos,
+                msg: format!("esperado identificador, encontrou {}", def.tok),
+            }),
+            None => Err(SyntaxError {
+                pos: TokenPos::default(),
+                msg: format!("esperado identificador, encontrou o final do arquivo"),
+            }),
         }
     }
 
     fn consume_literal(&mut self) -> Result<Literal<'a>> {
-        let TokenDef { tok, pos } = self.advance()?;
-        if let Token::Literal(literal) = tok {
-            Ok(literal)
-        } else {
-            Err(SyntaxError {
-                pos,
-                msg: format!("esperado literal, encontrou {}", tok),
-            })
+        match self.tokens.next() {
+            Some(TokenDef {
+                tok: Token::Literal(literal),
+                ..
+            }) => Ok(literal),
+            Some(def) => Err(SyntaxError {
+                pos: def.pos,
+                msg: format!("esperado literal, encontrou {}", def.tok),
+            }),
+            None => Err(SyntaxError {
+                pos: TokenPos::default(),
+                msg: format!("esperado literal, encontrou o final do arquivo"),
+            }),
         }
     }
 
     fn consume_operator(&mut self) -> Result<Operador> {
-        let TokenDef { tok, pos } = self.advance()?;
-        if let Token::Operador(operator) = tok {
-            Ok(operator)
-        } else {
-            Err(SyntaxError {
-                pos,
-                msg: format!("esperado operador, encontrou {:?}", tok),
-            })
+        match self.tokens.next() {
+            Some(TokenDef {
+                tok: Token::Operador(operador),
+                ..
+            }) => Ok(operador),
+            Some(def) => Err(SyntaxError {
+                pos: def.pos,
+                msg: format!("esperado operador, encontrou {}", def.tok),
+            }),
+            None => Err(SyntaxError {
+                pos: TokenPos::default(),
+                msg: format!("esperado operador, encontrou o final do arquivo"),
+            }),
         }
     }
 
