@@ -28,53 +28,59 @@ export const CONFIG: languages.LanguageConfiguration = {
       end: new RegExp('^\\s*#pragma\\s+endregion\\b'),
     },
   },
+  indentationRules: {
+    // não começa com um comentário
+    // tem as palavras senao, entao ou repetir
+    // e não termina com fim (o que indicaria um one-liner)
+    increaseIndentPattern:
+      /^((?!#).)*(\b(senao|entao|repetir)\b)(((?!\bfim\b).)*)(\s*)$/,
+
+    // opcionalmente espaço vazio seguido pela palavra fim
+    decreaseIndentPattern: /^\s*\bfim\b/,
+  },
 };
 
 export const GRAMMAR: languages.IMonarchLanguage = {
   // Set defaultToken to invalid to see what you do not tokenize yet
   // defaultToken: 'invalid',
 
-  keywords: [
-    'programa',
+  keywords: ['programa', 'seja', 'verdadeiro', 'falso'],
+
+  controlFlowKeywords: [
     'para',
     'ate',
     'repetir',
+    'incremento',
     'se',
     'entao',
     'senao',
     'enquanto',
-    'verdadeiro',
-    'falso',
     'fim',
   ],
 
-  typeKeywords: ['booleano', 'real', 'inteiro', 'texto', 'seja'],
+  typeKeywords: ['booleano', 'real', 'inteiro', 'texto'],
 
   operators: [
     ':=',
     '>',
     '<',
-    '!',
     '=',
     '<=',
     '>=',
-    '!=',
-    '&&',
-    '||',
+    '<>',
+    'e',
+    'ou',
     '+',
     '-',
     '*',
     '/',
     '&',
-    '|',
     '^',
     '%',
     '+=',
     '-=',
     '*=',
     '/=',
-    '&=',
-    '|=',
     '^=',
     '%=',
   ],
@@ -94,9 +100,10 @@ export const GRAMMAR: languages.IMonarchLanguage = {
         /[a-z_$][\w$]*/,
         {
           cases: {
-            '@typeKeywords': 'keyword',
+            '@typeKeywords': 'type.identifier',
             '@keywords': 'keyword',
-            '@default': 'identifier',
+            '@controlFlowKeywords': 'keyword.control',
+            '@default': 'variable',
           },
         },
       ],
@@ -158,6 +165,24 @@ export const GRAMMAR: languages.IMonarchLanguage = {
   },
 };
 
+export const themeVsDarkPlus: editor.IStandaloneThemeData = {
+  base: 'vs-dark',
+  inherit: true,
+  colors: {},
+  rules: [
+    { token: 'keyword.control', foreground: 'C586C0' },
+    { token: 'string.escape', foreground: 'D7BA7D' },
+    { token: 'keyword.controlFlow', foreground: 'C586C0' },
+    { token: 'variable', foreground: '9CDCFE' },
+    { token: 'parameter', foreground: '9CDCFE' },
+    { token: 'property', foreground: '9CDCFE' },
+    { token: 'support.function', foreground: 'DCDCAA' },
+    { token: 'function', foreground: 'DCDCAA' },
+    { token: 'variable.constant', foreground: '4FC1FF' },
+    { token: 'typeParameter', foreground: '4EC9B0' },
+  ],
+};
+
 export const AUTOCOMPLETE: languages.CompletionItemProvider = {
   provideCompletionItems: (model, position) => {
     const word = model.getWordUntilPosition(position);
@@ -184,6 +209,15 @@ export const AUTOCOMPLETE: languages.CompletionItemProvider = {
         insertTextRules:
           4 as languages.CompletionItemInsertTextRule.InsertAsSnippet,
         documentation: 'Para-Repetir',
+        range: range,
+      },
+      {
+        label: 'enquanto',
+        kind: 27 as languages.CompletionItemKind.Snippet,
+        insertText: 'enquanto ${1:expr} repetir\n\t$0\nfim',
+        insertTextRules:
+          4 as languages.CompletionItemInsertTextRule.InsertAsSnippet,
+        documentation: 'Enquanto-Repetir',
         range: range,
       },
     ];

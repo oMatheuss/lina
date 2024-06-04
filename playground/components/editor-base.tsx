@@ -1,7 +1,7 @@
 'use client';
 
 import * as monaco from 'monaco-editor/esm/vs/editor/editor.api';
-import { AUTOCOMPLETE, CONFIG, GRAMMAR } from '@/lib/lang-def';
+import { AUTOCOMPLETE, CONFIG, GRAMMAR, themeVsDarkPlus } from '@/lib/lang-def';
 import {
   type CSSProperties,
   useEffect,
@@ -16,6 +16,8 @@ const initMonaco = () => {
   monaco.languages.setMonarchTokensProvider(LANG, GRAMMAR);
   monaco.languages.setLanguageConfiguration(LANG, CONFIG);
   monaco.languages.registerCompletionItemProvider(LANG, AUTOCOMPLETE);
+
+  monaco.editor.defineTheme('vs-dark-plus', themeVsDarkPlus);
 };
 
 initMonaco();
@@ -40,12 +42,13 @@ export default function EditorBase({
     const div = container.current;
 
     const editor = monaco.editor.create(div, {
-      theme: 'vs-dark',
+      theme: 'vs-dark-plus',
       language: 'lina',
       automaticLayout: true,
       fontFamily: fontFamily,
       'semanticHighlighting.enabled': true,
       scrollbar: { alwaysConsumeMouseWheel: false },
+      autoIndent: 'full',
     });
 
     editorRef.current = editor;
