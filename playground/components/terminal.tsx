@@ -1,6 +1,6 @@
 'use client';
 
-import { TerminalSquareIcon } from 'lucide-react';
+import { CornerDownLeftIcon, TerminalSquareIcon } from 'lucide-react';
 import { useEffect, useRef, useState } from 'react';
 
 interface TerminalProps {
@@ -39,14 +39,21 @@ export function Terminal({
     setPrompt('');
   };
 
+  const handleKeyDown = (e: React.KeyboardEvent<HTMLInputElement>) => {
+    if (e.key === 'Enter') {
+      e.preventDefault();
+      handlePrompt();
+    }
+  };
+
   return (
-    <div className="min-h-[500px] flex flex-col bg-slate-600 rounded-md border-slate-600 border-4">
-      <header className="flex w-full p-2 rounded-t-md bg-[#1e1e1e] mb-1">
-        <TerminalSquareIcon className="inline mr-2 align-middle" />
+    <div className="flex min-h-[500px] flex-col rounded-md border-4 border-slate-600 bg-slate-600">
+      <header className="mb-1 flex w-full rounded-t-md bg-[#1e1e1e] p-2">
+        <TerminalSquareIcon className="mr-2 inline align-middle" />
         <h3 className="inline align-middle font-medium">TERMINAL</h3>
       </header>
       <textarea
-        className="w-full h-full bg-[#1e1e1e] text-slate-200 resize-none focus:outline-none px-3 py-2 font-mono"
+        className="h-full w-full resize-none bg-[#1e1e1e] px-3 py-2 font-mono text-slate-200 focus:outline-none"
         autoComplete="off"
         spellCheck="false"
         autoCapitalize="none"
@@ -55,19 +62,24 @@ export function Terminal({
         readOnly
         ref={textareaRef}
       ></textarea>
-      <div className="flex mt-1">
+      <div className="relative mt-1 flex justify-end">
         <input
-          className="w-full mr-1 rounded-bl-md bg-[#1e1e1e] text-slate-200 focus:outline-none px-3 py-2 font-mono"
+          className="w-full rounded-b-md bg-[#1e1e1e] py-2 pl-3 pr-10 font-mono text-slate-200 focus:outline-none"
           value={prompt}
           onChange={(e) => setPrompt(e.target.value)}
+          onKeyDown={handleKeyDown}
+          disabled={!enablePrompt}
         />
         <button
           type="button"
-          className="px-2 rounded-br-md bg-[#1e1e1e]"
+          className="absolute m-2 cursor-default rounded bg-indigo-500 p-1"
+          tabIndex={-1}
           onClick={handlePrompt}
           disabled={!enablePrompt}
+          title="Enter"
+          aria-label="Enter prompt"
         >
-          Enviar
+          <CornerDownLeftIcon className="size-4" />
         </button>
       </div>
     </div>
