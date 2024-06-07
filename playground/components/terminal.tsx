@@ -64,7 +64,7 @@ export function Terminal({
       ></textarea>
       <div className="relative mt-1 flex justify-end">
         <input
-          className="w-full rounded-b-md bg-[#1e1e1e] py-2 pl-3 pr-10 font-mono text-slate-200 focus:outline-none"
+          className="w-full rounded-b-md bg-[#1e1e1e] py-2 pl-3 pr-10 font-mono text-slate-200 focus:outline-none disabled:cursor-not-allowed"
           value={prompt}
           onChange={(e) => setPrompt(e.target.value)}
           onKeyDown={handleKeyDown}
@@ -72,7 +72,7 @@ export function Terminal({
         />
         <button
           type="button"
-          className="absolute m-2 cursor-default rounded bg-indigo-500 p-1"
+          className="absolute m-2 cursor-default rounded bg-indigo-500 p-1 disabled:bg-indigo-400"
           tabIndex={-1}
           onClick={handlePrompt}
           disabled={!enablePrompt}
