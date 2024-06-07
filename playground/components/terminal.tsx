@@ -18,6 +18,7 @@ export function Terminal({
 }: TerminalProps) {
   const [prompt, setPrompt] = useState('');
   const textareaRef = useRef<HTMLTextAreaElement>(null);
+  const inputRef = useRef<HTMLInputElement>(null);
 
   useEffect(() => {
     window.terminal_write = (str) => {
@@ -46,6 +47,10 @@ export function Terminal({
     }
   };
 
+  useEffect(() => {
+    if (enablePrompt) inputRef.current?.focus();
+  }, [enablePrompt]);
+
   return (
     <div className="flex min-h-[500px] flex-col rounded-md border-4 border-slate-600 bg-slate-600">
       <header className="mb-1 flex w-full rounded-t-md bg-[#1e1e1e] p-2">
@@ -64,6 +69,7 @@ export function Terminal({
       ></textarea>
       <div className="relative mt-1 flex justify-end">
         <input
+          ref={inputRef}
           className="w-full rounded-b-md bg-[#1e1e1e] py-2 pl-3 pr-10 font-mono text-slate-200 focus:outline-none disabled:cursor-not-allowed"
           value={prompt}
           onChange={(e) => setPrompt(e.target.value)}
