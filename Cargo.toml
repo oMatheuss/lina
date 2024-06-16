@@ -1,8 +1,4 @@
 [workspace]
-members = ["lina-wasm"]
-
-[package]
-name = "lina"
-version = "0.0.1"
-edition = "2021"
-authors = ["matheus <https://github.com/oMatheuss>", "rodrigo"]
+resolver = "2"
+members = ["lina", "lina-wasm"]
+default-members = ["lina"]

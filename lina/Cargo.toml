@@ -1,0 +1,10 @@
+[package]
+name = "lina"
+version = "0.0.1"
+license = "MIT"
+edition = "2021"
+authors = ["Matheus <https://github.com/oMatheuss>", "Rodrigo <https://github.com/RodrigoDev0>"]
+description = "Programming Language Lina"
+repository = "https://github.com/oMatheuss/lina"
+keywords = ["language", "lexer", "parser", "compiler"]
+categories = ["parser-implementations", "compilers"]
