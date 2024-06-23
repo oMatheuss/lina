@@ -223,6 +223,10 @@ impl<'a> Parser<'a> {
             Token::Enquanto => {
                 self.consume_invariant(Token::Enquanto)?;
                 let exp = self.parse_expression(1)?;
+                if exp.get_type() != Type::Boolean {
+                    let msg = format!("esperado expressão do tipo booleano");
+                    Err(SyntaxError { msg, pos })?;
+                }
                 self.consume_invariant(Token::Repetir)?;
                 let blk = self.parse_block()?;
                 SyntaxTree::EnquantoStmt { exp, blk }
@@ -230,6 +234,10 @@ impl<'a> Parser<'a> {
             Token::Se => {
                 self.consume_invariant(Token::Se)?;
                 let exp = self.parse_expression(1)?;
+                if exp.get_type() != Type::Boolean {
+                    let msg = format!("esperado expressão do tipo booleano");
+                    Err(SyntaxError { msg, pos })?;
+                }
                 self.consume_invariant(Token::Entao)?;
                 let blk = self.parse_block()?;
                 SyntaxTree::SeStmt { exp, blk }
