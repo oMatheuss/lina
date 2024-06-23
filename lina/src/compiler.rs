@@ -252,7 +252,11 @@ impl<'a> Compiler<'a> {
                     Operador::E => self.op(OpCode::And),
                     Operador::Ou => self.op(OpCode::Or),
 
-                    Operador::Adic | Operador::AdicAtrib => self.op(OpCode::Add),
+                    Operador::Adic | Operador::AdicAtrib => match lhs.get_type() {
+                        Type::Text => self.op(OpCode::Concat),
+                        _ => self.op(OpCode::Add),
+                    },
+
                     Operador::Subt | Operador::SubtAtrib => self.op(OpCode::Sub),
                     Operador::Mult | Operador::MultAtrib => self.op(OpCode::Mul),
                     Operador::Div | Operador::DivAtrib => self.op(OpCode::Div),

@@ -96,7 +96,7 @@ impl Terminal {
     pub fn resume(&mut self, max: i32) -> String {
         let mut count = 0;
         loop {
-            match self.vm.run_instr() {
+            match self.vm.run_single() {
                 Ok(s @ VmState::Executing) => {
                     count += 1;
                     if count >= max {

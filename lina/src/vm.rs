@@ -22,6 +22,8 @@ pub enum OpCode {
     Div,
     Rem,
 
+    Concat,
+
     Or,
     And,
 
@@ -68,6 +70,7 @@ impl Display for OpCode {
             OpCode::Mul => write!(f, "MUL"),
             OpCode::Div => write!(f, "DIV"),
             OpCode::Rem => write!(f, "REM"),
+            OpCode::Concat => write!(f, "CONCAT"),
             OpCode::Or => write!(f, "OR"),
             OpCode::And => write!(f, "AND"),
             OpCode::Jmp => write!(f, "JMP"),
@@ -159,8 +162,7 @@ impl TryInto<i32> for LinaValue {
     fn try_into(self) -> Result<i32, Self::Error> {
         match self {
             Self::Int32(number) => Ok(number),
-            Self::Float32(number) => Ok(number as i32),
-            other => Err(format!("{other} não pode ser convertido em i32").into()),
+            _ => Err(format!("esperado i32, obteve {self}").into()),
         }
     }
 }
@@ -177,8 +179,7 @@ impl TryInto<f32> for LinaValue {
     fn try_into(self) -> Result<f32, Self::Error> {
         match self {
             Self::Float32(number) => Ok(number),
-            Self::Int32(number) => Ok(number as f32),
-            other => Err(format!("{other} não pode ser convertido em f32").into()),
+            _ => Err(format!("esperado f32, obteve {self}").into()),
         }
     }
 }
@@ -189,9 +190,14 @@ impl From<f32> for LinaValue {
     }
 }
 
-impl Into<String> for LinaValue {
-    fn into(self) -> String {
-        self.to_string()
+impl TryInto<String> for LinaValue {
+    type Error = TypeError;
+
+    fn try_into(self) -> Result<String, Self::Error> {
+        match self {
+            Self::String(s) => Ok(s),
+            _ => Err(format!("esperado String, obteve {self}").into()),
+        }
     }
 }
 
@@ -207,7 +213,7 @@ impl TryInto<bool> for LinaValue {
     fn try_into(self) -> Result<bool, Self::Error> {
         match self {
             Self::Boolean(boolean) => Ok(boolean),
-            other => Err(format!("{other} não pode ser convertido em bool").into()),
+            _ => Err(format!("esperado bool, obteve {self}").into()),
         }
     }
 }
@@ -224,21 +230,7 @@ impl TryInto<usize> for LinaValue {
     fn try_into(self) -> Result<usize, Self::Error> {
         match self {
             Self::Address(address) => Ok(address),
-            Self::Int32(number) => {
-                if number >= 0 {
-                    Ok(number as usize)
-                } else {
-                    Err(format!("{number} é negativo e não pode ser convertido em usize").into())
-                }
-            }
-            Self::Float32(number) => {
-                if number >= 0.0 {
-                    Ok(number as usize)
-                } else {
-                    Err(format!("{number} é negativo e não pode ser convertido em usize").into())
-                }
-            }
-            other => Err(format!("{other} não pode ser convertido em usize").into()),
+            _ => Err(format!("esperado usize, obteve {self}").into()),
         }
     }
 }
@@ -346,6 +338,23 @@ impl Default for VmState {
 
 type VmResult<T> = Result<T, RuntimeError>;
 
+macro_rules! binop {
+    ($s:ident, $op:tt, $($i:ident),+) => {{
+        let rhs = $s.pop();
+        let lhs = $s.pop();
+
+        let result = match (&lhs, &rhs) {
+            $((LinaValue::$i(lhs), LinaValue::$i(rhs)) => (lhs $op rhs).into(),)+
+            _ => {
+                let msg = format!("tipos incompatíveis para a operação {}: lhs: {:?}, rhs: {:?}", stringify!($op), lhs, rhs);
+                return Err(TypeError(msg).into());
+            },
+        };
+
+        $s.push(result);
+    }};
+}
+
 pub struct LinaVm<In, Out>
 where
     In: Read,
@@ -437,219 +446,6 @@ where
         &self.stack[address]
     }
 
-    fn binop(&mut self, op: OpCode) -> VmResult<()> {
-        let rhs = self.pop();
-        let lhs = self.pop();
-
-        let result: LinaValue = match op {
-            OpCode::Add => match lhs {
-                LinaValue::Int32(lhs) => {
-                    let rhs: i32 = rhs.try_into()?;
-                    (lhs + rhs).into()
-                }
-                LinaValue::Float32(lhs) => {
-                    let rhs: f32 = rhs.try_into()?;
-                    (lhs + rhs).into()
-                }
-                LinaValue::Address(lhs) => {
-                    let rhs: usize = rhs.try_into()?;
-                    (lhs + rhs).into()
-                }
-                LinaValue::String(lhs) => {
-                    let rhs: String = rhs.into();
-                    (lhs + &rhs).into()
-                }
-                _ => Err(TypeError(format!(
-                    "operacao + não implementada para {:?}",
-                    lhs
-                )))?,
-            },
-            OpCode::Sub => match lhs {
-                LinaValue::Int32(lhs) => {
-                    let rhs: i32 = rhs.try_into()?;
-                    (lhs - rhs).into()
-                }
-                LinaValue::Float32(lhs) => {
-                    let rhs: f32 = rhs.try_into()?;
-                    (lhs - rhs).into()
-                }
-                LinaValue::Address(lhs) => {
-                    let rhs: usize = rhs.try_into()?;
-                    (lhs - rhs).into()
-                }
-                _ => Err(TypeError(format!(
-                    "operacao - não implementada para {:?}",
-                    lhs
-                )))?,
-            },
-            OpCode::Mul => match lhs {
-                LinaValue::Int32(lhs) => {
-                    let rhs: i32 = rhs.try_into()?;
-                    (lhs * rhs).into()
-                }
-                LinaValue::Float32(lhs) => {
-                    let rhs: f32 = rhs.try_into()?;
-                    (lhs * rhs).into()
-                }
-                LinaValue::Address(lhs) => {
-                    let rhs: usize = rhs.try_into()?;
-                    (lhs * rhs).into()
-                }
-                _ => Err(TypeError(format!(
-                    "operacao * não implementada para {:?}",
-                    lhs
-                )))?,
-            },
-            OpCode::Div => match lhs {
-                LinaValue::Int32(lhs) => {
-                    let rhs: i32 = rhs.try_into()?;
-                    (lhs / rhs).into()
-                }
-                LinaValue::Float32(lhs) => {
-                    let rhs: f32 = rhs.try_into()?;
-                    (lhs / rhs).into()
-                }
-                LinaValue::Address(lhs) => {
-                    let rhs: usize = rhs.try_into()?;
-                    (lhs / rhs).into()
-                }
-                _ => Err(TypeError(format!(
-                    "operacao / não implementada para {:?}",
-                    lhs
-                )))?,
-            },
-            OpCode::Rem => match lhs {
-                LinaValue::Int32(lhs) => {
-                    let rhs: i32 = rhs.try_into()?;
-                    (lhs % rhs).into()
-                }
-                LinaValue::Address(lhs) => {
-                    let rhs: usize = rhs.try_into()?;
-                    (lhs % rhs).into()
-                }
-                _ => Err(TypeError(format!(
-                    "operacao % não implementada para {:?}",
-                    lhs
-                )))?,
-            },
-            OpCode::Or => match lhs {
-                LinaValue::Int32(lhs) => {
-                    let rhs: i32 = rhs.try_into()?;
-                    (lhs | rhs).into()
-                }
-                LinaValue::Boolean(lhs) => {
-                    let rhs: bool = rhs.try_into()?;
-                    (lhs | rhs).into()
-                }
-                LinaValue::Address(lhs) => {
-                    let rhs: usize = rhs.try_into()?;
-                    (lhs | rhs).into()
-                }
-                _ => Err(TypeError(format!(
-                    "operacao % não implementada para {:?}",
-                    lhs
-                )))?,
-            },
-            OpCode::And => match lhs {
-                LinaValue::Int32(lhs) => {
-                    let rhs: i32 = rhs.try_into()?;
-                    (lhs & rhs).into()
-                }
-                LinaValue::Boolean(lhs) => {
-                    let rhs: bool = rhs.try_into()?;
-                    (lhs & rhs).into()
-                }
-                LinaValue::Address(lhs) => {
-                    let rhs: usize = rhs.try_into()?;
-                    (lhs & rhs).into()
-                }
-                _ => Err(TypeError(format!(
-                    "operacao % não implementada para {:?}",
-                    lhs
-                )))?,
-            },
-            OpCode::Eq => (lhs == rhs).into(),
-            OpCode::NE => (lhs != rhs).into(),
-            OpCode::LT => match lhs {
-                LinaValue::Int32(lhs) => {
-                    let rhs: i32 = rhs.try_into()?;
-                    (lhs < rhs).into()
-                }
-                LinaValue::Float32(lhs) => {
-                    let rhs: f32 = rhs.try_into()?;
-                    (lhs < rhs).into()
-                }
-                LinaValue::Address(lhs) => {
-                    let rhs: usize = rhs.try_into()?;
-                    (lhs < rhs).into()
-                }
-                _ => Err(TypeError(format!(
-                    "operacao < não implementada para {:?}",
-                    lhs
-                )))?,
-            },
-            OpCode::GT => match lhs {
-                LinaValue::Int32(lhs) => {
-                    let rhs: i32 = rhs.try_into()?;
-                    (lhs > rhs).into()
-                }
-                LinaValue::Float32(lhs) => {
-                    let rhs: f32 = rhs.try_into()?;
-                    (lhs > rhs).into()
-                }
-                LinaValue::Address(lhs) => {
-                    let rhs: usize = rhs.try_into()?;
-                    (lhs > rhs).into()
-                }
-                _ => Err(TypeError(format!(
-                    "operacao > não implementada para {:?}",
-                    lhs
-                )))?,
-            },
-            OpCode::LE => match lhs {
-                LinaValue::Int32(lhs) => {
-                    let rhs: i32 = rhs.try_into()?;
-                    (lhs <= rhs).into()
-                }
-                LinaValue::Float32(lhs) => {
-                    let rhs: f32 = rhs.try_into()?;
-                    (lhs <= rhs).into()
-                }
-                LinaValue::Address(lhs) => {
-                    let rhs: usize = rhs.try_into()?;
-                    (lhs <= rhs).into()
-                }
-                _ => Err(TypeError(format!(
-                    "operacao <= não implementada para {:?}",
-                    lhs
-                )))?,
-            },
-            OpCode::GE => match lhs {
-                LinaValue::Int32(lhs) => {
-                    let rhs: i32 = rhs.try_into()?;
-                    (lhs >= rhs).into()
-                }
-                LinaValue::Float32(lhs) => {
-                    let rhs: f32 = rhs.try_into()?;
-                    (lhs >= rhs).into()
-                }
-                LinaValue::Address(lhs) => {
-                    let rhs: usize = rhs.try_into()?;
-                    (lhs >= rhs).into()
-                }
-                _ => Err(TypeError(format!(
-                    "operacao >= não implementada para {:?}",
-                    lhs
-                )))?,
-            },
-            _ => Err(CodeError(format!("{} não é um operador binário", op as u8)))?,
-        };
-
-        self.push(result);
-
-        Ok(())
-    }
-
     fn read(&mut self, stopc: &[u8]) -> Result<String, RuntimeError> {
         let mut buff = Vec::new();
         let mut byte = [0_u8];
@@ -666,11 +462,11 @@ where
         Ok(value)
     }
 
-    pub fn run_instr(&mut self) -> VmResult<VmState> {
+    pub fn run_instr(&mut self) -> VmResult<()> {
         let opcode: OpCode = self.curr_byte().try_into()?;
 
         match opcode {
-            OpCode::Halt => return Ok(VmState::Idle),
+            OpCode::Halt => {}
 
             OpCode::Const => {
                 let index = self.next_addr();
@@ -686,33 +482,62 @@ where
 
             OpCode::CastI => {
                 let top = self.pop();
-                let val: i32 = top.try_into()?;
+                let val = match top {
+                    LinaValue::Float32(v) => v as i32,
+                    LinaValue::Int32(v) => v,
+                    _ => {
+                        let msg = format!("não é possivel converter {top} em i32");
+                        Err(TypeError(msg))?
+                    }
+                };
                 self.push(val.into());
             }
             OpCode::CastF => {
                 let top = self.pop();
-                let val: f32 = top.try_into()?;
+                let val = match top {
+                    LinaValue::Float32(v) => v,
+                    LinaValue::Int32(v) => v as f32,
+                    _ => {
+                        let msg = format!("não é possivel converter {top} em f32");
+                        Err(TypeError(msg))?
+                    }
+                };
                 self.push(val.into());
             }
             OpCode::CastS => {
                 let top = self.pop();
-                let val: String = top.into();
+                let val: String = top.to_string();
                 self.push(val.into());
             }
 
-            OpCode::Add
-            | OpCode::Sub
-            | OpCode::Mul
-            | OpCode::Div
-            | OpCode::Rem
-            | OpCode::Or
-            | OpCode::And
-            | OpCode::Eq
-            | OpCode::NE
-            | OpCode::LT
-            | OpCode::GT
-            | OpCode::LE
-            | OpCode::GE => self.binop(opcode)?,
+            OpCode::Add => binop!(self, +, Int32, Float32, Address),
+            OpCode::Sub => binop!(self, -, Int32, Float32, Address),
+            OpCode::Mul => binop!(self, *, Int32, Float32, Address),
+            OpCode::Div => binop!(self, /, Int32, Float32, Address),
+            OpCode::Rem => binop!(self, %, Int32, Address),
+            OpCode::Or => binop!(self, |, Int32, Boolean, Address),
+            OpCode::And => binop!(self, &, Int32, Boolean, Address),
+            OpCode::Eq => {
+                let rhs = self.pop();
+                let lhs = self.pop();
+                self.push((lhs == rhs).into());
+            }
+            OpCode::NE => {
+                let rhs = self.pop();
+                let lhs = self.pop();
+                self.push((lhs != rhs).into());
+            }
+            OpCode::LT => binop!(self, <, Int32, Float32, Address),
+            OpCode::GT => binop!(self, >, Int32, Float32, Address),
+            OpCode::LE => binop!(self, <=, Int32, Float32, Address),
+            OpCode::GE => binop!(self, >=, Int32, Float32, Address),
+
+            OpCode::Concat => {
+                let rhs = self.pop();
+                let mut lhs: String = self.pop().try_into()?;
+                lhs.push_str(&rhs.to_string());
+                self.push(lhs.into());
+            }
 
             // Controle de fluxo
             OpCode::Jmp => {
@@ -768,6 +593,22 @@ where
             }
         };
 
+        Ok(())
+    }
+
+    pub fn run(&mut self) -> VmResult<()> {
+        loop {
+            if self.curr_byte() == 0b0 {
+                break Ok(());
+            } else {
+                self.run_instr()?;
+                self.next_byte();
+            }
+        }
+    }
+
+    pub fn run_single(&mut self) -> VmResult<VmState> {
+        self.run_instr()?;
         let next: OpCode = self.next_byte().try_into()?;
 
         let state = match next {
@@ -779,18 +620,9 @@ where
         Ok(state)
     }
 
-    pub fn non_stop(&mut self) -> VmResult<()> {
-        loop {
-            let vm_state = self.run_instr()?;
-            if let VmState::Idle = vm_state {
-                break Ok(());
-            }
-        }
-    }
-
     pub fn decompile(&mut self) -> VmResult<()> {
         loop {
-            let opcode: OpCode = self.next_byte().try_into()?;
+            let opcode: OpCode = self.curr_byte().try_into()?;
 
             match opcode {
                 OpCode::Halt => {
@@ -832,7 +664,9 @@ where
                 OpCode::Call => todo!(),
                 OpCode::Return => todo!(),
                 _ => writeln!(self.stdout, "{opcode}")?,
-            }
+            };
+
+            self.next_byte();
         }
     }
 }

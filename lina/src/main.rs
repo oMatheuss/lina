@@ -36,7 +36,7 @@ fn main() -> std::result::Result<(), ()> {
             })?;
         }
     } else {
-        vm.non_stop().map_err(|err| {
+        vm.run().map_err(|err| {
             eprintln!("Erro: {err}");
         })?;
     }

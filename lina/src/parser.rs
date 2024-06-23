@@ -412,10 +412,7 @@ impl<'a> Parser<'a> {
                 left = Expression::Cast(Box::new(left), Real);
                 Real
             }
-            (Text, _) => {
-                right = Expression::Cast(Box::new(right), Text);
-                Text
-            }
+            (Text, _) => Text, // no cast needed
             (_, Text) => {
                 left = Expression::Cast(Box::new(left), Text);
                 Text
