@@ -608,6 +608,10 @@ where
     }
 
     pub fn run_single(&mut self) -> VmResult<VmState> {
+        if self.curr_byte() == 0b0 {
+            return Ok(VmState::Idle);
+        }
+
         self.run_instr()?;
         let next: OpCode = self.next_byte().try_into()?;
 
