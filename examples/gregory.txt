@@ -1,0 +1,12 @@
+programa GregorySeries
+
+real sum := 0.0
+real neg := 0.0-1.0
+real flip := neg
+
+para i := 1 ate 1000000000 repetir
+    flip *= neg
+    sum += flip / (2*i - 1)
+fim
+
+saida(sum * 4.0)
