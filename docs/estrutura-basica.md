@@ -4,6 +4,8 @@ Todo programa em "Lina" deve começar com a palavra-chave `programa` seguida pel
 
 ## Exemplo
 
-```plaintext
+```lina
 programa Fibonacci
+
+# resto do código ...
 ```

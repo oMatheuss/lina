@@ -11,7 +11,7 @@ export default defineConfig({
     // https://vitepress.dev/reference/default-theme-config
     nav: [
       { text: "Home", link: "/" },
-      { text: "Introdução", link: "/playground" },
+      { text: "Introdução", link: "/introducao" },
       { text: "Playground", target: "_self", link: "/playground/" },
     ],
 
@@ -22,13 +22,13 @@ export default defineConfig({
       },
       {
         text: "Estrutura Básica do Programa",
-        link: "/estrutura-basica-do-programa",
+        link: "/estrutura-basica",
       },
       {
         text: "Tipos de Variaveis",
         base: "/tipos",
         items: [
-          { text: "Inteiros e Operações Básicas", link: "/numerico" },
+          { text: "Inteiros e Reais", link: "/numerico" },
           { text: "Texto e Concatenação", link: "/texto" },
           { text: "Booleano e Condicionais", link: "/booleano" },
         ],
@@ -38,9 +38,8 @@ export default defineConfig({
         base: "/controle",
         items: [
           { text: "Condicional se", link: "/se" },
-          { text: "Condicional se com senao", link: "/se-senao" },
-          { text: "Laço para", link: "/para" },
-          { text: "Laço enquanto", link: "/enquanto" },
+          { text: "Laço Para", link: "/para" },
+          { text: "Laço Enquanto", link: "/enquanto" },
         ],
       },
       {
@@ -48,20 +47,16 @@ export default defineConfig({
         base: "/exemplos",
         items: [
           {
-            text: "Calcular a Média de uma Lista de Números",
-            link: "/media",
+            text: "Número de Euler",
+            link: "/euler",
           },
           {
-            text: "Encontrar o Maior Número em uma Lista",
-            link: "/maior-numero",
-          },
-          {
-            text: "Verificar se um Número é Primo",
-            link: "/primo",
-          },
-          {
-            text: "Fibonacci",
+            text: "Sequência de Fibonacci",
             link: "/fibonacci",
+          },
+          {
+            text: "Série Gregoriana",
+            link: "/gregory",
           },
         ],
       },

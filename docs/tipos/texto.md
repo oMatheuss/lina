@@ -4,7 +4,7 @@
 
 ## Manipulando um Texto.
 
-```plaintext
+```lina
 programa ManipulacaoTexto
 
 texto saudacao := "Olá"
@@ -12,5 +12,5 @@ texto nome := "Mundo"
 
 texto mensagem := saudacao + ", " + nome + "!"
 
-saida := mensagem
-````
+saida(mensagem)
+```

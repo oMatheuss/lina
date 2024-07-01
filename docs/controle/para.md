@@ -1,19 +1,17 @@
-# Estruturas de Controle
+# Laço `para`
 
-## Laço `para`
+O laço `para` é uma estrutura especializada em iterar em inteiros, sua sintaxe é definida a seguir:
 
-O laço `para` é usado para repetir um bloco de código um número específico de vezes. A sintaxe é a seguinte:
-
-```plaintext
-para variavel ate valorFinal repetir
-    // corpo do laço
+```lina
+para [variavel] ate [limite] repetir
+    # corpo do laço
 fim
-````
+```
 
 ### Exemplo
 
-```plaintext
+```lina
 para i ate 10 repetir
-    // código a ser repetido
+    saida(i)
 fim
 ```

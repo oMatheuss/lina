@@ -1,8 +1,10 @@
 # Exemplos Avançados
 
-## Fibonacci
+## Sequência de Fibonacci
 
-```plaintext
+Na matemática, a sucessão de Fibonacci, é uma sequência de números inteiros, começando normalmente por 0 e 1, na qual cada termo subsequente corresponde à soma dos dois anteriores.
+
+```lina
 programa Fibonacci
 
 inteiro x := 0

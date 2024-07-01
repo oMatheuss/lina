@@ -1,20 +1,18 @@
-# Estruturas de Controle
-
-## Condicional `se`
+# Condicional `se`
 
 A estrutura condicional `se` executa um bloco de código apenas se uma expressão condicional for verdadeira. A sintaxe é a seguinte:
 
-```plaintext
+```lina
 se expressao repetir
-    // corpo condicional
+    # corpo condicional
 fim
 ```
 
 ### Exemplo
 
-```plaintext
+```lina
 inteiro x := 5
 se x > 0 repetir
-    // código a ser executado se x for maior que 0
+    # código a ser executado se x for maior que 0
 fim
 ```
