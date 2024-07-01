@@ -3,6 +3,7 @@ import MonacoWebpackPlugin from 'monaco-editor-webpack-plugin';
 /** @type {import('next').NextConfig} */
 const nextConfig = {
   output: 'export',
+  distDir: '../dist/playground',
   basePath: process.env.BASE_PATH,
   webpack: (config, _ctx) => {
     config.plugins.push(new MonacoWebpackPlugin({
