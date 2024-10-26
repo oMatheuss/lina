@@ -1,4 +1,6 @@
-# Laço `enquanto`
+# Extruturas de Controle
+
+## Laço `enquanto`
 
 O laço `enquanto` repete um bloco de código enquanto uma expressão condicional for verdadeira. A sintaxe é a seguinte:
 
@@ -11,9 +13,11 @@ fim
 ### Exemplo
 
 ```plaintext
+programa Exemplo
+
 inteiro i := 0
 enquanto i < 10 repetir
-    # código a ser repetido
     i := i + 1
+    saida("i = ", i)
 fim
 ```

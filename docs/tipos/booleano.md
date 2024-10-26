@@ -5,12 +5,14 @@
 ## Exemplo de Condicional Booleano
 
 ```lina
-programa CondicionalBooleano
+programa Exemplo
 
-inteiro idade := 20
-booleano maiorDeIdade := idade >= 18
+booleano foo := verdadeiro
+booleano bar := falso
 
-se maiorDeIdade repetir
-    saida("Você é maior de idade.")
+booleano ehMaiorQueCinco := 10 > 5
+
+se ehMaiorQueCinco entao
+    saida("10 é maior que 5!")
 fim
 ```

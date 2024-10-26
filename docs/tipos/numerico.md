@@ -8,6 +8,10 @@ A linguagem suporta os seguintes tipos de variáveis númericas:
 ### Exemplo
 
 ```lina
+programa Exemplo
+
 inteiro x := 0
 real y := 3.14
+
+saida("PI = ", y)
 ```

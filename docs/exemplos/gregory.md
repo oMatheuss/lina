@@ -18,3 +18,5 @@ fim
 
 saida(sum * 4.0)
 ```
+
+*Quando executar esse exemplo no browser usar números menores (< 10000), ou a execução leverá muito tempo.*

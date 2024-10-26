@@ -5,7 +5,7 @@
 ## Manipulando um Texto.
 
 ```lina
-programa ManipulacaoTexto
+programa Exemplo
 
 texto saudacao := "Olá"
 texto nome := "Mundo"

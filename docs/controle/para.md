@@ -1,4 +1,6 @@
-# Laço `para`
+# Extruturas de Controle
+
+## Laço `para`
 
 O laço `para` é uma estrutura especializada em iterar em inteiros, sua sintaxe é definida a seguir:
 
@@ -11,7 +13,9 @@ fim
 ### Exemplo
 
 ```lina
+programa Exemplo
+
 para i ate 10 repetir
-    saida(i)
+    saida("i = ", i)
 fim
 ```
